@@ -49,6 +49,19 @@ Tên dự án, tên đơn vị, đuôi mã hồ sơ, ngưỡng DT còn lại: qu
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 
+## Thông báo Word tự sửa theo web
+Sửa họ tên, diện tích, toàn phần/một phần, thửa, tờ trên web → mỗi lần **Tải / Xem trước / Tải zip** thông báo, trang tự thay đúng chỗ lệch trong file (giữ định dạng chữ). File gốc trên Drive chỉ đổi khi bấm **⟳ Đồng bộ file Word**: trang so mọi thông báo đang lọc, liệt kê chỗ lệch, đồng ý thì ghi hẳn.
+Trang tìm theo câu chữ mẫu thông báo thu hồi đất chuẩn: “Thu hồi đất của Ông/Bà …”, “Diện tích đất dự kiến thu hồi: … m²”, “thuộc toàn bộ/một phần thửa đất số …, tờ bản đồ số …”. Mẫu dự án khác câu chữ thì sửa mảng `TB_FLD` trong index.html.
+
+## Ảnh hiện trạng (PDF)
+Nút **📷 Ảnh HT (PDF)** trên dòng hộ: đính kèm file PDF hồ sơ hiện trạng (Timemark: mỗi trang 1 ảnh). Trang tự đếm số ảnh; bấm 📷 để xem lưới ảnh, bấm ảnh xem lớn, ← → lật. Lưu trên Drive cùng thư mục thông báo. Sheet cũ chạy lại `caiDat()` để thêm cột *File ảnh hiện trạng*.
+
+## Ảnh vệ tinh theo năm
+Thẻ Bản đồ → ô **Ảnh vệ tinh theo năm** (Esri Wayback): mỗi năm một mốc, ghi ngày chụp thật tại dự án, bỏ năm trùng ảnh. Kéo **Độ rõ** để so với ảnh hiện tại.
+
+## Sửa bản vẽ (quản trị)
+Thẻ Bản đồ → **Sửa bản vẽ**: ✂ *Tách thửa* (bấm thửa → bấm 2 điểm đường cắt → đặt nhãn phần mới), ⊕ *Gộp thửa* (bấm thửa giữ nhãn → bấm thửa gộp vào: 2 mảnh tính chung 1 thửa, cộng diện tích), ✎ *Sửa nhãn*, ↶ *Hoàn tác*, 💾 *Lưu bản vẽ* (lên Drive cho cả dự án).
+
 ## 2. Bản đồ thửa
 1. AutoCAD: bản vẽ ở tọa độ VN2000 thật (TP.HCM: X ≈ 600 000, Y ≈ 1 190 000). SAVEAS → DXF 2013.
 2. `pip install ezdxf` rồi:
@@ -68,4 +81,4 @@ Thửa ghép với hộ theo “Số tờ/Số thửa”. Hệ VN2000 TP.HCM kin
 Ghi số ảnh và link thư mục/tệp Drive hồ sơ hiện trạng vào cột “Số ảnh hiện trạng”, “Link hồ sơ hiện trạng”. Nút 📷 trên dòng hộ mở link.
 
 ## Chưa có so với trang Ban đang dùng
-Tách/gộp thửa và tô màu tay trên bản đồ, ảnh vệ tinh theo năm, tự tách ảnh từ PDF Timemark, tự đồng bộ file Word khi sửa thông tin.
+Tô màu tay từng thửa; gộp thửa là gộp theo nhãn (không hợp nhất đường ranh thành 1 đa giác).

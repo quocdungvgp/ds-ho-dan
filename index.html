@@ -74,6 +74,7 @@ input,select,textarea{min-height:40px;padding:6px 10px;border:1px solid var(--li
 .act .x{color:var(--bad)}
 .tbc{font-size:12px;min-width:170px}.tbc b{color:var(--ok)}
 .empty{text-align:center;color:var(--mute);padding:30px}
+#anhBody .btn{color:#1d1a17;background:#fff}
 .cho{margin-top:6px;padding:6px 8px;border-left:3px solid var(--warn);background:var(--soft);border-radius:0 8px 8px 0;font-size:13px}
 @media print{.cho{display:none}}
 .foot{font-size:12px;color:var(--mute);margin-top:8px}
@@ -158,6 +159,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <button class="btn" id="bXls">⇩ Xuất Excel</button>
       <button class="btn" id="bPrint">⎙ In danh sách</button>
       <button class="btn" id="bKemLoat" hidden>⇪ Đính kèm hàng loạt</button>
+      <button class="btn" id="bDongBo" hidden title="So file Word thông báo với thông tin trên web; ghi hẳn chỗ lệch vào file">⟳ Đồng bộ file Word</button>
       <a class="btn" id="bSheet" hidden target="_blank" rel="noopener">▦ Mở Google Sheet</a>
     </div>
   </section>
@@ -199,6 +201,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <div><h4>Tô màu thửa theo</h4>
         <select id="mMode"><option value="tb">Thông báo thu hồi đất</option><option value="to">Tổ NVBT</option><option value="gt">Toàn phần / một phần</option><option value="cl">DT còn lại sau thu hồi</option><option value="anh">Ảnh hiện trạng</option></select></div>
       <div><h4>Chú giải <span class="note">· bấm để bật/tắt</span></h4><div class="leg" id="mLeg"></div></div>
+      <div><h4>Ảnh vệ tinh theo năm <span class="note">· Esri Wayback</span></h4>
+        <select id="mWb"><option value="">Ảnh hiện tại (theo nền đang chọn)</option></select>
+        <label class="row note" style="flex-wrap:nowrap;margin-top:4px">Độ rõ <input type="range" id="mWbO" min="0" max="100" value="100" style="min-height:0;padding:0;border:0"></label>
+        <span class="note" id="mWbN"></span></div>
       <label class="row" style="font-size:13px"><input type="checkbox" id="mLab" style="width:auto;min-height:0" checked> Nhãn tờ/thửa</label>
       <label class="row" style="font-size:13px"><input type="checkbox" id="mRanh" style="width:auto;min-height:0" checked> Ranh dự án</label>
       <div class="tools">
@@ -206,6 +212,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <button class="btn sm" id="mGps">◎ Vị trí tôi</button><button class="btn sm" id="mFit">⤢ Toàn dự án</button>
         <button class="btn sm" id="mIn">⎙ In bản đồ</button><button class="btn sm" id="mKml">⇩ Xuất KML</button>
       </div>
+      <div id="edBox" hidden><h4>Sửa bản vẽ <span class="note">· quản trị</span></h4>
+        <div class="tools"><button class="btn sm" data-ed="tach">✂ Tách thửa</button><button class="btn sm" data-ed="gop">⊕ Gộp thửa</button>
+        <button class="btn sm" data-ed="nhan">✎ Sửa nhãn</button><button class="btn sm" id="edUndo" disabled>↶ Hoàn tác</button></div>
+        <button class="btn sm pri" id="edSave" disabled style="margin-top:6px;width:100%">💾 Lưu bản vẽ</button>
+        <p class="note" id="edMsg" style="margin:4px 0 0"></p></div>
       <div class="info" id="mInfo"><span class="note">Bấm vào một thửa để xem hộ dân, diện tích, thông báo.</span></div>
       <p class="note" id="mSrc"></p>
     </aside>
@@ -301,6 +312,9 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <!-- nhật ký -->
 <dialog id="dLog" class="wide"><div class="dh"><h3 id="logT">Nhật ký thao tác</h3><button class="btn sm" id="lDong">Đóng</button></div>
   <div style="padding:14px;overflow:auto;height:calc(90vh - 56px)"><div class="scroll"><table class="stack" id="tLog"></table></div></div></dialog>
+<!-- ảnh hiện trạng -->
+<dialog id="dAnh" class="wide"><div class="dh"><h3 id="anhT"></h3><div class="row"><button class="btn sm" id="anhTai">⇩ PDF</button><button class="btn sm" id="anhThay">Thay</button><button class="btn sm" id="anhGo" style="color:var(--bad)">Gỡ</button><a class="btn sm" id="anhLink" target="_blank" rel="noopener">Thư mục Drive</a><button class="btn sm" id="anhDong">Đóng</button></div></div>
+  <div id="anhBody" style="height:calc(90vh - 56px);overflow:auto;padding:12px;background:#1d1a17"></div></dialog>
 <div id="toast"></div>
 
 <script>
@@ -326,7 +340,7 @@ const download=(blob,name)=>{const a=document.createElement('a');a.href=URL.crea
 const b64ToBuf=b=>{const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
 const bufToB64=buf=>{const u=new Uint8Array(buf);let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
 const DOCX='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const LIB={xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',jszip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',pizzip:'https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js',dt:'https://cdn.jsdelivr.net/npm/docxtemplater@3.47.4/build/docxtemplater.js',dp:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.2/dist/docx-preview.min.js'};
+const LIB={pdf:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',jszip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',pizzip:'https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js',dt:'https://cdn.jsdelivr.net/npm/docxtemplater@3.47.4/build/docxtemplater.js',dp:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.2/dist/docx-preview.min.js'};
 const loaded={};
 const need=(...ks)=>Promise.all(ks.map(k=>loaded[k]||(loaded[k]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=LIB[k];s.onload=ok;s.onerror=()=>{delete loaded[k];no(new Error('Không tải được thư viện '+k))};document.head.append(s)}))));
 /* IndexedDB nhỏ: lưu file thông báo, bản vẽ, mẫu Word khi không dùng Google Drive */
@@ -475,13 +489,15 @@ function conLai(r){
   const v=p.dt-thu;return{k:v<NG()?'duoi':'tren',v,dtThua:p.dt};
 }
 /* đề nghị chờ duyệt (máy chủ trả về trong CHO) */
+const coAnhR=r=>num(r.anh)>0||!!r.ht||!!r.ht_file;
 const choOf=r=>r._moi?[r._moi]:CHO.filter(c=>c.hoId===String(r.id)&&c.loai!=='them');
 const virtRows=()=>CHO.filter(c=>c.loai==='them').map(c=>({...c.data,id:c.hoId,stt:c.data.stt||'—',_moi:c}));
 const FLD={stt:'STT',ma:'Mã HS',canbo:'Cán bộ thụ lý',ten:'Họ tên',diachi:'Địa chỉ',phuong:'Phường',kp:'Khu phố',to:'Tổ',to_bd:'Tờ',thua:'Thửa',dt:'DT thu hồi',giaitoa:'Giải tỏa',tb_so:'Số TB',tb_ngay:'Ngày TB',anh:'Số ảnh',ht:'Link hiện trạng',duyet:'Chờ duyệt',ghichu:'Ghi chú'};
-const LOAI={sua:'sửa thông tin',them:'thêm hộ ngoài danh sách',xoa:'xóa dòng',kem:'đính kèm thông báo',go:'gỡ thông báo'};
+const LOAI={kemht:'đính kèm ảnh hiện trạng',goht:'gỡ ảnh hiện trạng',sua:'sửa thông tin',them:'thêm hộ ngoài danh sách',xoa:'xóa dòng',kem:'đính kèm thông báo',go:'gỡ thông báo'};
 function choHtml(c,r){
   let d='';
   if(c.loai==='sua')d=Object.keys(c.data).filter(k=>FLD[k]).map(k=>`${FLD[k]}: <s class="mute">${esc(r&&r[k]||'(trống)')}</s> → <b>${esc(c.data[k]||'(trống)')}</b>`).join('; ');
+  else if(c.loai==='kemht')d=esc(c.data.name||'')+(c.data.anh?' · '+esc(c.data.anh)+' ảnh':'');
   else if(c.loai==='kem')d=`<button class="lk" data-a="xemcho" data-c="${esc(c.id)}">${esc(c.data.name||'file')}</button>`;
   else if(c.loai==='xoa'||c.lydo)d=c.lydo?'lý do: '+esc(c.lydo):'';
   const mine=ME&&c.by===ME.ten;
@@ -491,7 +507,7 @@ function choHtml(c,r){
 function filtered(){
   const q=fold(st.q);
   return D.concat(virtRows()).filter(r=>(!st.to||r.to===st.to||(st.to==='_'&&!r.to))&&(!st.cb||(st.cb==='_co'?!!r.canbo:st.cb==='_chua'?!r.canbo:r.canbo===st.cb))
-    &&(!st.dt||(st.dt==='co'?num(r.dt)>0:!num(r.dt)))&&(!st.cl||conLai(r).k===st.cl)&&(!st.anh||(st.anh==='co'?(num(r.anh)>0||!!r.ht):!(num(r.anh)>0||r.ht)))
+    &&(!st.dt||(st.dt==='co'?num(r.dt)>0:!num(r.dt)))&&(!st.cl||conLai(r).k===st.cl)&&(!st.anh||(st.anh==='co'?coAnhR(r):!coAnhR(r)))
     &&(!st.p||r.phuong===st.p)&&(!st.kp||r.kp===st.kp)&&(!st.tbd||r.to_bd===st.tbd)&&(!st.gt||(st.gt==='none'?!r.giaitoa:r.giaitoa===st.gt))
     &&(st.tb==='all'||(st.tb==='co'&&hasTB(r))||(st.tb==='chua'&&!hasTB(r))||(st.tb==='duyet'&&(r.duyet||choOf(r).length)))
     &&(!q||fold([r.stt,r.ma,r.ten,r.diachi,r.ghichu,r.canbo,'to '+r.to_bd,'thua '+r.thua,r.to_bd+'/'+r.thua].join(' ')).includes(q)));
@@ -522,13 +538,13 @@ function render(){
   ].map(([v,c,l,s,f])=>`<button class="card" data-f='${f}'><b class="${c}">${v}</b><span>${l}</span><i>${s}</i></button>`).join('');
 
   const tos=[...new Set(D.map(r=>r.to||''))].sort((a,b)=>(a?0:1)-(b?0:1)||a.localeCompare(b,'vi',{numeric:true}));
-  const sumRow=rs=>{const c=rs.filter(hasTB);return[rs.length,c.length,rs.length-c.length,pct(c.length,rs.length),c.reduce((s,r)=>s+num(r.dt),0),rs.filter(r=>!num(r.dt)).length,rs.filter(r=>r.duyet).length,rs.filter(r=>num(r.anh)>0||r.ht).length]};
+  const sumRow=rs=>{const c=rs.filter(hasTB);return[rs.length,c.length,rs.length-c.length,pct(c.length,rs.length),c.reduce((s,r)=>s+num(r.dt),0),rs.filter(r=>!num(r.dt)).length,rs.filter(r=>r.duyet).length,rs.filter(coAnhR).length]};
   const cell=(v,f,cls='')=>v?`<button class="lk ${cls}" data-f='${f}'>${v}</button>`:`<span class="mute">0</span>`;
   const tr=(t,v,foot)=>{const T=foot?'':JSON.stringify(t||'_');const b=k=>foot?`{${k}}`:`{"to":${T}${k?','+k:''}}`;
     return `<tr><td>${foot?'<b>Tổng cộng</b>':`<button class="tag ${TO_CLS[t]||'t0'}" data-f='${b('')}'>${esc(t||'Chưa phân tổ')}</button>`}</td><td class="n">${cell(v[0],b(''))}</td><td class="n">${cell(v[1],b('"tb":"co"'),'ok')}</td><td class="n">${cell(v[2],b('"tb":"chua"'),'bad')}</td><td class="n"><span class="bar noprint"><i style="width:${v[3]}%"></i></span>${v[3]}%</td><td class="n">${f1(v[4])}</td><td class="n">${cell(v[5],b('"dt":"thieu"'),'warn')}</td><td class="n">${cell(v[6],b('"tb":"duyet"'))}</td><td class="n">${cell(v[7],b('"anh":"co"'))}</td></tr>`};
   $('#tTo').innerHTML=`<thead><tr><th>Tổ</th><th class="n">Số hộ</th><th class="n">Đã có TB</th><th class="n">Chưa có TB</th><th class="n">Tỷ lệ có TB</th><th class="n">DT thu hồi theo TB (m²)</th><th class="n">Cần bổ sung DT</th><th class="n">Chờ duyệt</th><th class="n">Có ảnh hiện trạng</th></tr></thead><tbody>${tos.map(t=>tr(t,sumRow(D.filter(r=>(r.to||'')===t)))).join('')}</tbody><tfoot>${tr('',sumRow(D),1)}</tfoot>`;
 
-  const noDt=D.filter(r=>!num(r.dt)).length,noCb=D.filter(r=>!r.canbo).length,coAnh=D.filter(r=>num(r.anh)>0||r.ht),nAnh=coAnh.reduce((s,r)=>s+num(r.anh),0),duoi=D.filter(r=>conLai(r).k==='duoi').length;
+  const noDt=D.filter(r=>!num(r.dt)).length,noCb=D.filter(r=>!r.canbo).length,coAnh=D.filter(coAnhR),nAnh=coAnh.reduce((s,r)=>s+num(r.anh),0),duoi=D.filter(r=>conLai(r).k==='duoi').length;
   $('#chips').innerHTML=`<b>Diện tích thu hồi</b><button class="chip" data-f='{"dt":"co"}'>${D.length-noDt} hộ đã có</button>${noDt?`<button class="chip w" data-f='{"dt":"thieu"}'>⚠ ${noDt} hộ cần bổ sung</button>`:''}${duoi?`<button class="chip w" data-f='{"cl":"duoi"}'>${duoi} hộ còn lại dưới ${NG()} m²</button>`:''}
    <b>Cán bộ thụ lý</b><button class="chip" data-f='{"cb":"_co"}'>${D.length-noCb} hộ đã có · ${new Set(D.map(r=>r.canbo).filter(Boolean)).size} cán bộ</button>${noCb?`<button class="chip w" data-f='{"cb":"_chua"}'>${noCb} hộ chưa có</button>`:''}
    <b>Ảnh hiện trạng</b><button class="chip" data-f='{"anh":"co"}'>${coAnh.length} hộ đã có ảnh · ${fN(nAnh)} ảnh</button>${D.length-coAnh.length?`<button class="chip w" data-f='{"anh":"chua"}'>⚠ ${D.length-coAnh.length} hộ chưa có ảnh</button>`:''}`;
@@ -566,7 +582,7 @@ function list(){
     const sh=(k,l,c='')=>`<th class="${c}"><button class="lk" data-sort="${k}" style="text-decoration:none">${l}${sortK===k?(sortD>0?' ▲':' ▼'):''}</button></th>`;
     h='<tr>'+sh('stt','STT')+sh('ma','Mã số hồ sơ')+sh('canbo','Cán bộ thụ lý')+sh('ten','Họ và tên')+sh('diachi','Địa chỉ thu hồi')+'<th>P · KP</th>'+sh('to','Tổ')+sh('thua','Tờ · Thửa')+sh('dt','DT thu hồi (m²)','n')+'<th>Giải tỏa</th><th>Thông báo thu hồi đất</th></tr>';
     body=R.map(r=>{const cl=conLai(r);return`<tr><td>${esc(r.stt)}</td><td>${r.ma?`<span class="code">${esc(r.ma)}</span>`:'<span class="note">chưa cấp mã</span>'}</td><td>${r.canbo?esc(r.canbo):'<span class="warn note">chưa có</span>'}</td>
-      <td><span class="nm">${esc(r.ten)}</span>${num(r.anh)>0||r.ht?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button><button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
+      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📷 Ảnh HT (PDF)</button>`}<button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
       <td style="white-space:nowrap"><button class="lk" data-a="map" data-id="${esc(r.id)}" title="Xem trên bản đồ">Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)}</button></td>
       <td class="n">${num(r.dt)?f1(num(r.dt)):'<span class="warn">cần bổ sung</span>'}${cl.v!==undefined?`<div class="note ${cl.k==='duoi'?'warn':''}">còn lại ${f1(cl.v)} m²</div>`:''}</td>
@@ -591,7 +607,8 @@ const pickFile=accept=>new Promise(ok=>{fileX.value='';fileX.accept=accept;fileX
 async function attach(r){const f=await pickFile('.docx');if(!f)return;toast('Đang đính kèm…');try{await putTB(r,await f.arrayBuffer(),f.name)}catch(e){toast('Lỗi: '+e.message)}}
 async function xem(r){
   const d=$('#dXem');$('#xemT').textContent='Thông báo thu hồi đất – '+r.ten;$('#xemBody').innerHTML='<p class="note">Đang mở thông báo…</p>';d.showModal();
-  try{const buf=await getTB(r);if(!buf)throw new Error('không thấy file');d._buf=buf;d._name=r.tb_ten||tbName(r);
+  try{const raw=await getTB(r);if(!raw)throw new Error('không thấy file');const fx=await docFix(raw,r);const buf=fx.buf;d._buf=buf;d._name=r.tb_ten||tbName(r);
+    $('#xemT').textContent='Thông báo thu hồi đất – '+r.ten+(fx.ch.length?' · đã sửa theo web: '+fx.ch.map(c=>c.lb).join(', '):'');
     await need('jszip','dp');$('#xemBody').innerHTML='';await docx.renderAsync(buf,$('#xemBody'),null,{inWrapper:true,ignoreLastRenderedPageBreak:true})}
   catch(e){$('#xemBody').innerHTML=`<p class="bad">Không xem trước được (${esc(e.message)}). Bấm "Tải Word" để mở bằng Word.</p>`}
 }
@@ -615,10 +632,56 @@ async function taoLoat(){
   let n=0;for(const r of R){try{await taoTB(r,true,true);n++;toast(`Đang tạo ${n}/${R.length}…`)}catch(e){toast('Lỗi hộ STT '+r.stt+': '+e.message)}}
   if(CFG.api)await load(true);else render();toast(`Đã tạo ${n} thông báo`+(ME.q==='denghi'?' — đã gửi đề nghị, chờ quản trị duyệt':''));
 }
+/* ---- TỰ SỬA FILE WORD THEO WEB ----
+   Mỗi lần Tải / Xem trước / Tải zip: đọc thông báo, so với thông tin hộ trên web, thay đúng chỗ lệch
+   (giữ nguyên định dạng chữ của đoạn). File gốc trên Drive chỉ đổi khi bấm "Đồng bộ file Word".
+   Mẫu tìm theo câu chữ thông báo thu hồi đất chuẩn — mẫu dự án khác câu chữ thì sửa TB_FLD. */
+const W_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const TB_FLD=[
+  ['ten','họ tên',/Thu hồi đất của\s+(?:Ông\/Bà|Ông|Bà)?\s*(.+?)\.?\s*$/d,r=>String(r.ten||'').trim().replace(/^(Ông\/Bà|Ông|Bà)\s+/i,'')],
+  ['dt','diện tích',/Diện tích đất dự kiến thu hồi:\s*([\d.,]+)/d,r=>num(r.dt)?f1(num(r.dt)):''],
+  ['giaitoa','toàn bộ/một phần',/thuộc\s+(toàn bộ|một phần)\s+thửa đất/id,r=>r.giaitoa==='Toàn phần'?'toàn bộ':r.giaitoa==='Một phần'?'một phần':''],
+  ['thua','thửa',/thửa đất số\s+(.+?),\s*tờ bản đồ/d,r=>String(r.thua||'').trim()],
+  ['to_bd','tờ',/tờ bản đồ số\s+(\d+)/d,r=>String(r.to_bd||'').trim()]
+];
+const sameV=(k,a,b)=>k==='dt'?Math.abs(num(a)-num(b))<.05:fold(a).replace(/\s+/g,' ').trim()===fold(b).replace(/\s+/g,' ').trim();
+async function docFix(buf,r){
+  await need('jszip');
+  let z;try{z=await JSZip.loadAsync(buf)}catch(e){return{buf,ch:[]}}
+  const f=z.file('word/document.xml');if(!f)return{buf,ch:[]};
+  const doc=new DOMParser().parseFromString(await f.async('string'),'application/xml');
+  const ch=[];
+  for(const p of [...doc.getElementsByTagNameNS(W_NS,'p')]){
+    const ts=()=>[...p.getElementsByTagNameNS(W_NS,'t')].filter(t=>{let a=t.parentNode;while(a&&!(a.localName==='p'&&a.namespaceURI===W_NS))a=a.parentNode;return a===p});
+    for(const [k,lb,re,fn] of TB_FLD){
+      const T=ts(),txt=T.map(t=>t.textContent).join('');const m=re.exec(txt);if(!m)continue;
+      const moi=fn(r),cu=m[1];if(!moi||sameV(k,cu,moi)||ch.some(c=>c.k===k))continue;
+      let [a,b]=m.indices[1],pos=0,done=false;
+      for(const t of T){const L=t.textContent.length,s0=pos,e0=pos+L;pos=e0;
+        if(e0<=a||s0>=b){continue}
+        const tx=t.textContent,from=Math.max(a,s0)-s0,to=Math.min(b,e0)-s0;
+        t.textContent=tx.slice(0,from)+(done?'':moi)+tx.slice(to);done=true;t.setAttribute('xml:space','preserve')}
+      ch.push({k,lb,cu,moi});
+    }
+  }
+  if(!ch.length)return{buf,ch};
+  z.file('word/document.xml',new XMLSerializer().serializeToString(doc));
+  return{buf:await z.generateAsync({type:'arraybuffer',mimeType:DOCX}),ch};
+}
+async function dongBo(){
+  const R=filtered().filter(r=>r.tb_file&&canRow(r));if(!R.length)return toast('Không có hộ nào có file thông báo (trong bộ lọc, trong phạm vi của mày)');
+  const lech=[];let n=0;
+  for(const r of R){n++;toast(`Đang so ${n}/${R.length}…`);try{const fx=await docFix(await getTB(r),r);if(fx.ch.length)lech.push([r,fx])}catch(e){}}
+  if(!lech.length)return toast(`Đã so ${R.length} thông báo — không có file nào lệch với web`);
+  const ds=lech.slice(0,6).map(([r,fx])=>`STT ${r.stt} ${r.ten}: `+fx.ch.map(c=>`${c.lb} ${c.cu} → ${c.moi}`).join(', ')).join(' · ');
+  if(!await hoi(`${lech.length}/${R.length} thông báo lệch với web — ${ds}${lech.length>6?' …':''}. Ghi hẳn vào file trên ${CFG.api?'Drive':'máy'}${ME&&ME.q==='denghi'?' (thành đề nghị chờ duyệt)':''}?`))return;
+  let k=0;for(const [r,fx] of lech){try{await putTB(r,fx.buf,r.tb_ten||tbName(r),true);k++;toast(`Đang ghi ${k}/${lech.length}…`)}catch(e){toast('Lỗi STT '+r.stt+': '+e.message)}}
+  if(CFG.api)await load(true);else render();toast(`Đã đồng bộ ${k} file thông báo`);
+}
 async function zipTB(){
   const R=filtered().filter(r=>r.tb_file);if(!R.length)return toast('Không có hộ nào có file thông báo trong bộ lọc');
   await need('jszip');const z=new JSZip();let n=0;
-  for(const r of R){try{const b=await getTB(r);if(b){z.file(r.tb_ten||tbName(r),b);n++;toast(`Đang gom ${n}/${R.length}…`)}}catch(e){}}
+  for(const r of R){try{const b0=await getTB(r);if(b0){const b=(await docFix(b0,r)).buf;z.file(r.tb_ten||tbName(r),b);n++;toast(`Đang gom ${n}/${R.length}…`)}}catch(e){}}
   download(await z.generateAsync({type:'blob'}),'ThongBao_THD_'+n+'_ho.zip');
 }
 /* hộp hỏi xác nhận trong trang (confirm() bị chặn ở vài trình xem) */
@@ -674,7 +737,7 @@ function initMap(){
   const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22,maxNativeZoom:19,attribution:'© OpenStreetMap'});
   gs.addTo(map);L.control.layers({'Vệ tinh Google':gs,'Bản đồ Google':gr,'Vệ tinh Esri':esri,'OpenStreetMap':osm},null,{position:'topright'}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
-  map.on('moveend',labels);map.on('click',e=>{if(meas)measAdd(e.latlng)});
+  map.on('moveend',labels);map.on('click',e=>{if(meas)measAdd(e.latlng);else if(ED.mode==='tach'&&ED.t)edClick(null,e.latlng)});
   mapReady=true;drawMap();
 }
 const CLS={
@@ -682,7 +745,7 @@ const CLS={
   to:{fn:rs=>!rs.length?'k':(rs[0].to||'_'),items:[['Tổ 1','Tổ 1',TO_COL['Tổ 1']],['Tổ 2','Tổ 2',TO_COL['Tổ 2']],['Tổ 3','Tổ 3',TO_COL['Tổ 3']],['Tổ 4','Tổ 4',TO_COL['Tổ 4']],['_','Chưa phân tổ','#495057'],['k','Không có hộ','#adb5bd']]},
   gt:{fn:rs=>!rs.length?'k':rs.some(r=>r.giaitoa==='Toàn phần')?'tp':rs.some(r=>r.giaitoa==='Một phần')?'mp':'_',items:[['tp','Toàn phần','#c92a2a'],['mp','Một phần','#f59f00'],['_','Chưa đánh dấu','#495057'],['k','Không có hộ','#adb5bd']]},
   cl:{fn:rs=>{if(!rs.length)return'k';const k=rs.map(r=>conLai(r).k);return k.includes('tp')?'tp':k.includes('duoi')?'duoi':k.includes('tren')?'tren':'kx'},items:[['duoi','Còn lại dưới ngưỡng','#e03131'],['tren','Còn lại ≥ ngưỡng','#2f9e44'],['tp','Thu hồi toàn phần','#7048e8'],['kx','Chưa xác định','#495057'],['k','Không có hộ','#adb5bd']]},
-  anh:{fn:rs=>!rs.length?'k':rs.every(r=>num(r.anh)>0||r.ht)?'co':'chua',items:[['co','Đã có ảnh hiện trạng','#1c7ed6'],['chua','Chưa có ảnh','#e03131'],['k','Không có hộ','#adb5bd']]}
+  anh:{fn:rs=>!rs.length?'k':rs.every(coAnhR)?'co':'chua',items:[['co','Đã có ảnh hiện trạng','#1c7ed6'],['chua','Chưa có ảnh','#e03131'],['k','Không có hộ','#adb5bd']]}
 };
 let HO_IDX=new Map();   // "tờ/thửa" -> [hộ]  (dựng 1 lần mỗi lần vẽ, khỏi lọc lại cả danh sách cho từng thửa)
 const buildHoIdx=()=>{HO_IDX=new Map();for(const r of D)for(const t of thuaList(r)){const k=keyThua(r.to_bd,t);HO_IDX.has(k)||HO_IDX.set(k,[]);HO_IDX.get(k).push(r)}};
@@ -698,7 +761,7 @@ function drawMap(){
     const k=String(t.l||''),rs=hoOf(k),c=C.fn(rs);cnt[c]=(cnt[c]||0)+1;
     const col=(C.items.find(i=>i[0]===c)||[,, '#adb5bd'])[2];
     const p=L.polygon(t.v.map(([x,y])=>toLL(x,y)),{color:col,weight:rs.length?1.6:.8,fillColor:col,fillOpacity:offCls.has(c)?0:(rs.length?.45:.12),opacity:offCls.has(c)?.15:.95});
-    p._k=k;p._c=c;p.on('click',e=>{L.DomEvent.stop(e);if(meas)return measAdd(e.latlng);pickParcel(k)});
+    p._k=k;p._c=c;p._t=t;p.on('click',e=>{L.DomEvent.stop(e);if(meas)return measAdd(e.latlng);if(ED.mode)return edClick(t,e.latlng);pickParcel(k)});
     p.bindTooltip(`${esc(k)}${rs.length?' · '+rs.length+' hộ':''}`,{sticky:true});
     gThua.addLayer(p);if(!poly.has(k))poly.set(k,[]);poly.get(k).push(p);
     LAB.push([p.getBounds().getCenter(),k]);
@@ -726,7 +789,7 @@ function pickParcel(k,keep){
   $('#mInfo').innerHTML=`<h3>Tờ ${esc(k.split('/')[0])} · Thửa ${esc(k.split('/')[1])}</h3>
    <div class="note">DT thửa trên bản vẽ: <b>${P?f1(P.dt):'—'} m²</b>${thu?` · thu hồi ${f1(thu)} m² · còn lại ${P?f1(P.dt-thu):'—'} m²`:''}</div>
    ${rs.length?rs.map(r=>`<div class="ho"><span class="nm">${esc(r.ten)}</span> <span class="note">STT ${esc(r.stt)}${r.ma?' · '+esc(r.ma):''}</span><br>${esc(r.diachi)} · ${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:''} · ${num(r.dt)?f1(num(r.dt))+' m² · ':''}${esc(r.giaitoa)}<br>${hasTB(r)?`<span class="ok">✓ Đã có TB ${esc(r.tb_so||'')}</span>`:'<span class="bad">Chưa có thông báo</span>'}
-     <div class="act">${r.tb_file?`<button data-a="xem" data-id="${esc(r.id)}">Xem TB</button>`:''}${canRow(r)?`<button data-a="sua" data-id="${esc(r.id)}">Sửa</button>`:''}${r.ht?`<button data-a="ht" data-id="${esc(r.id)}">Ảnh hiện trạng</button>`:''}<button data-a="ds" data-id="${esc(r.id)}">Trong danh sách</button></div></div>`).join(''):'<p class="note">Không có hộ nào trong danh sách ở thửa này.</p>'}
+     <div class="act">${r.tb_file?`<button data-a="xem" data-id="${esc(r.id)}">Xem TB</button>`:''}${canRow(r)?`<button data-a="sua" data-id="${esc(r.id)}">Sửa</button>`:''}${coAnhR(r)?`<button data-a="ht" data-id="${esc(r.id)}">Ảnh hiện trạng</button>`:''}<button data-a="ds" data-id="${esc(r.id)}">Trong danh sách</button></div></div>`).join(''):'<p class="note">Không có hộ nào trong danh sách ở thửa này.</p>'}
    <div class="act" style="margin-top:8px"><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${ll}">Google Maps</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${ll}">Chỉ đường</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}">Street View</a></div>
    <p class="note">Tọa độ tâm: ${ll}</p>`;
 }
@@ -737,7 +800,7 @@ function suggest(){
   const out=[];const m=q.match(/^(\d+)\s*[\/ ,.-]\s*(\d+)$/);
   if(m&&poly.has(m[1]+'/'+m[2]))out.push({k:m[1]+'/'+m[2],t:'Tờ '+m[1]+' · Thửa '+m[2]});
   for(const r of D)if(fold([r.ten,r.ma,r.diachi,r.stt].join(' ')).includes(q))for(const t of thuaList(r))out.push({k:keyThua(r.to_bd,t),t:`${r.ten} — ${r.diachi||''} (${r.to_bd}/${t})`});
-  for(const k of poly.keys())if(k.startsWith(q)&&!out.some(o=>o.k===k))out.push({k,t:'Tờ/thửa '+k});
+  const qk=q.replace(/\s+/g,'');for(const k of poly.keys()){const fk=fold(k);if(fk===qk&&!out.some(o=>o.k===k))out.unshift({k,t:'Tờ/thửa '+k});else if(fk.startsWith(qk)&&!out.some(o=>o.k===k))out.push({k,t:'Tờ/thửa '+k})}
   sugL=out.slice(0,30);sugI=-1;
   $('#mSug').innerHTML=sugL.map((o,i)=>`<li data-i="${i}">${esc(o.t)}</li>`).join('')||'<li class="note">Không thấy</li>';$('#mSug').hidden=false;
 }
@@ -778,10 +841,11 @@ document.addEventListener('click',async e=>{
     else if(a==='xoa'){const ly=await hoi(`Xóa hộ STT ${r.stt} – ${r.ten} khỏi danh sách?${CFG.api?' Dòng trên Google Sheet cũng bị xóa.':''}`,'Lý do xóa (vd: trùng dòng, không bị ảnh hưởng)');if(ly===false)return;await delRow(r,ly)}
     else if(a==='kem'||a==='thay')attach(r);
     else if(a==='go'){if(!await hoi(`Gỡ thông báo của hộ ${r.ten}?`))return;await delTB(r)}
-    else if(a==='tai'){const buf=await getTB(r);if(buf)download(new Blob([buf],{type:DOCX}),r.tb_ten||tbName(r))}
+    else if(a==='tai'){const raw=await getTB(r);if(raw){const fx=await docFix(raw,r);download(new Blob([fx.buf],{type:DOCX}),r.tb_ten||tbName(r));if(fx.ch.length)toast('Đã tải, đã sửa theo web: '+fx.ch.map(c=>c.lb+' '+c.cu+' → '+c.moi).join('; '))}}
     else if(a==='xem')xem(r);
     else if(a==='tao'){toast('Đang tạo…');await taoTB(r)}
-    else if(a==='ht'){if(r.ht)window.open(r.ht,'_blank','noopener');else toast(`Hộ có ${r.anh} ảnh — chưa ghi link thư mục/tệp hồ sơ hiện trạng`)}
+    else if(a==='ht'){if(r.ht_file)openAnh(r);else if(r.ht)window.open(r.ht,'_blank','noopener');else toast(`Hộ có ${r.anh} ảnh — chưa đính kèm PDF hay link hồ sơ hiện trạng`)}
+    else if(a==='kemht')attachHT(r);
     else if(a==='map'){const t=thuaList(r)[0];location.hash='#bando';setTimeout(()=>pickParcel(keyThua(r.to_bd,t)),200)}
     else if(a==='mapk'){location.hash='#bando';setTimeout(()=>pickParcel(b.dataset.k),200)}
     else if(a==='duyet'){await duyet([b.dataset.c],true)}
@@ -846,7 +910,7 @@ function topBar(){
   $('#bMe').hidden=!CFG.api;$('#bMe').textContent=on?`👤 ${ME.hoten||ME.ten} · ${Q_TEN[ME.q]}${ME.to&&ME.to!=='*'&&ME.q!=='quantri'?' · '+ME.to:''}`:'🔑 Đăng nhập';
   $('#bUsers').hidden=$('#bLog').hidden=!(on&&isAdmin());
   $('#bDuyet').hidden=!(on&&CHO.length);$('#nDuyet').textContent=CHO.length;
-  $('#bKemLoat').hidden=!has('sua');$('#bSheet').hidden=!(on&&isAdmin()&&CFG.sheetUrl);if(CFG.sheetUrl)$('#bSheet').href=CFG.sheetUrl;
+  $('#edBox').hidden=!isAdmin();  $('#bKemLoat').hidden=!has('sua');$('#bDongBo').hidden=!has('denghi');$('#bSheet').hidden=!(on&&isAdmin()&&CFG.sheetUrl);if(CFG.sheetUrl)$('#bSheet').href=CFG.sheetUrl;
 }
 function showLogin(msg){if(msg)$('#loginMsg').textContent=msg;topBar();if(!$('#dLogin').open)$('#dLogin').showModal()}
 $('#dLogin').addEventListener('close',async()=>{
@@ -923,6 +987,7 @@ setInterval(async()=>{
   try{const j=await api('ping');if(VER===null)VER=j.v;else if(j.v!==VER){VER=j.v;await load(true);toast('Đã cập nhật thay đổi mới')}}catch(e){}
 },60000);
 /* đính kèm hàng loạt: chọn nhiều file .docx hoặc 1 file .zip; ghép hộ theo STT trong tên file (TBTHD_STT008_… / STT8 / 008_…) */
+$('#bDongBo').onclick=()=>dongBo().catch(e=>toast(e.message));
 $('#bKemLoat').onclick=async()=>{
   fileX.value='';fileX.accept='.docx,.zip';fileX.multiple=true;
   const fs=await new Promise(ok=>{fileX.onchange=()=>ok([...fileX.files]);fileX.click()});if(!fs.length)return;
@@ -936,6 +1001,117 @@ $('#bKemLoat').onclick=async()=>{
   let n=0;for(const [it,r] of ok){try{await putTB(r,await it.get(),it.name,true);n++;toast(`Đang đính kèm ${n}/${ok.length}…`)}catch(e){toast('Lỗi STT '+r.stt+': '+e.message)}}
   if(CFG.api)await load(true);else render();toast(`Đã đính kèm ${n} thông báo`);
 };
+
+/* ================================================================
+   13. ẢNH HIỆN TRẠNG — file PDF mỗi hộ (Timemark: mỗi trang 1 ảnh kèm giờ chụp, tọa độ)
+   Lưu trên Drive (hoặc máy này); trang đọc PDF ngay trên trình duyệt, hiện từng trang thành ảnh.
+   ================================================================ */
+async function pdfLib(){await need('pdf');if(!pdfjsLib.GlobalWorkerOptions.workerSrc){try{const t=await (await fetch(LIB.pdf.replace('pdf.min.js','pdf.worker.min.js'))).text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:'text/javascript'}))}catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdf.replace('pdf.min.js','pdf.worker.min.js')}}return pdfjsLib}
+async function getHT(r){if(String(r.ht_file).startsWith('local:'))return await idb.get(r.ht_file);if(CFG.api&&r.ht_file){const j=await api('getFile',{id:r.ht_file});return b64ToBuf(j.b64)}return null}
+async function attachHT(r){
+  const f=await pickFile('.pdf');if(!f)return;const buf=await f.arrayBuffer();toast('Đang đọc PDF…');
+  let anh='';try{const L=await pdfLib();anh=String((await L.getDocument({data:buf.slice(0)}).promise).numPages)}catch(e){return toast('Không đọc được PDF: '+e.message)}
+  if(buf.byteLength>35e6)return toast('File quá lớn (> 35 MB) — tách nhỏ hoặc để link Drive');
+  try{
+    if(CFG.api)return xong(await api('uploadTB',{kind:'ht',id:r.id,name:f.name,anh,b64:bufToB64(buf)}),'đính kèm ảnh hiện trạng ('+anh+' ảnh)');
+    const k='local:ht:'+r.id;await idb.set(k,buf);r.ht_file=k;r.ht_ten=f.name;r.anh=anh;saveLocal();toast(`Đã đính kèm ${anh} ảnh hiện trạng`);render();if(mapReady)drawMap();
+  }catch(e){toast('Lỗi: '+e.message)}
+}
+let anhR=null,anhDoc=null,anhI=-1;
+async function openAnh(r){
+  anhR=r;anhDoc=null;anhI=-1;const d=$('#dAnh');$('#anhT').textContent='Ảnh hiện trạng – '+r.ten;
+  $('#anhThay').hidden=$('#anhGo').hidden=!canRow(r);$('#anhLink').hidden=!r.ht;if(r.ht)$('#anhLink').href=r.ht;
+  $('#anhBody').innerHTML='<p style="color:#ccc">Đang mở hồ sơ hiện trạng…</p>';d.open||d.showModal();
+  try{const buf=await getHT(r);if(!buf)throw new Error('không thấy file');d._buf=buf;const L=await pdfLib();anhDoc=await L.getDocument({data:buf.slice(0)}).promise;drawThumbs()}
+  catch(e){$('#anhBody').innerHTML=`<p style="color:#f88">Không mở được (${esc(e.message)})</p>`}
+}
+async function drawThumbs(){
+  const n=anhDoc.numPages,b=$('#anhBody');anhI=-1;
+  b.innerHTML=`<p style="color:#ccc;margin:0 0 8px">${n} ảnh · ${esc(anhR.ht_ten||'')} · bấm ảnh để xem lớn, ← → để lật</p><div id="anhGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px"></div>`;
+  const g=$('#anhGrid');
+  for(let i=1;i<=n;i++){const c=document.createElement('canvas');c.dataset.i=i;c.style.cssText='width:100%;border-radius:8px;cursor:zoom-in;background:#333';g.append(c)}
+  for(let i=1;i<=n;i++){if(!$('#dAnh').open||anhI>0)return;const p=await anhDoc.getPage(i),v=p.getViewport({scale:1}),sc=360/v.width,vp=p.getViewport({scale:sc}),c=g.querySelector(`[data-i="${i}"]`);if(!c)return;c.width=vp.width;c.height=vp.height;await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise}
+}
+async function bigAnh(i){
+  const n=anhDoc.numPages;anhI=Math.max(1,Math.min(n,i));const b=$('#anhBody');
+  b.innerHTML=`<div class="row" style="color:#ccc;margin-bottom:8px"><button class="btn sm" data-anh="grid">▦ Tất cả</button><button class="btn sm" data-anh="prev">←</button><span>Ảnh ${anhI}/${n}</span><button class="btn sm" data-anh="next">→</button></div><canvas id="anhBig" style="max-width:100%;max-height:calc(90vh - 130px);width:auto;height:auto;display:block;margin:auto"></canvas>`;
+  const p=await anhDoc.getPage(anhI),v=p.getViewport({scale:1}),sc=Math.min(2.5,1600/v.width),vp=p.getViewport({scale:sc}),c=$('#anhBig');c.width=vp.width;c.height=vp.height;await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+}
+$('#anhBody').addEventListener('click',e=>{const c=e.target.closest('canvas[data-i]');if(c)return bigAnh(+c.dataset.i);const b=e.target.closest('[data-anh]');if(!b)return;const a=b.dataset.anh;if(a==='grid')drawThumbs();else bigAnh(anhI+(a==='next'?1:-1))});
+$('#dAnh').addEventListener('keydown',e=>{if(anhI<0)return;if(e.key==='ArrowRight')bigAnh(anhI+1);if(e.key==='ArrowLeft')bigAnh(anhI-1)});
+$('#anhDong').onclick=()=>$('#dAnh').close();
+$('#anhTai').onclick=()=>{const d=$('#dAnh');if(d._buf)download(new Blob([d._buf],{type:'application/pdf'}),anhR.ht_ten||'hien-trang.pdf')};
+$('#anhThay').onclick=()=>{$('#dAnh').close();attachHT(anhR)};
+$('#anhGo').onclick=async()=>{if(!await hoi('Gỡ ảnh hiện trạng của hộ '+anhR.ten+'?'))return;$('#dAnh').close();const r=anhR;
+  if(CFG.api)return xong(await api('delHT',{id:r.id}),'gỡ ảnh hiện trạng');
+  await idb.del(r.ht_file);r.ht_file='';r.ht_ten='';r.anh='';saveLocal();toast('Đã gỡ');render()};
+
+/* ================================================================
+   14. ẢNH VỆ TINH THEO NĂM (Esri World Imagery Wayback) — mỗi năm lấy bản phát hành cuối năm,
+   hỏi ngày chụp thật tại tâm dự án, bỏ năm nào trùng ảnh với năm sau. Kéo "Độ rõ" để so với ảnh hiện tại.
+   ================================================================ */
+let WB=null,wbLayer=null,wbLoading=false;
+async function loadWayback(){
+  if(WB||wbLoading||!map)return;wbLoading=true;$('#mWbN').textContent='Đang lấy danh sách ảnh…';
+  try{
+    const j=await (await fetch('https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json')).json();
+    const by={};for(const [k,v] of Object.entries(j)){const m=String(v.itemTitle).match(/(\d{4})-(\d\d)-(\d\d)/);if(!m)continue;const y=m[1];if(!by[y]||by[y].d<m[0])by[y]={k,d:m[0],url:v.itemURL,meta:v.metadataLayerUrl}}
+    WB=Object.entries(by).sort((a,b)=>b[0]-a[0]).map(([y,o])=>({y,...o,chup:''}));
+    const c=(gThua&&gThua.getLayers().length?gThua.getBounds().getCenter():map.getCenter());
+    await Promise.all(WB.map(async w=>{for(const ly of [3,4,5,6]){try{const q=await (await fetch(`${w.meta}/${ly}/query?geometry=${c.lng},${c.lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=SRC_DATE2,SRC_RES&returnGeometry=false&f=json`)).json();const f=q.features&&q.features[0];if(f&&f.attributes.SRC_DATE2){w.chup=new Date(f.attributes.SRC_DATE2).toLocaleDateString('vi-VN');w.res=f.attributes.SRC_RES;return}}catch(e){}}}));
+    const out=[];for(const w of WB){if(w.chup&&out.length&&out.at(-1).chup===w.chup)continue;out.push(w)}WB=out;
+    $('#mWb').innerHTML='<option value="">Ảnh hiện tại (theo nền đang chọn)</option>'+WB.map((w,i)=>`<option value="${i}">Năm ${w.y}${w.chup?' · chụp '+w.chup:''}</option>`).join('');
+    $('#mWbN').textContent=WB.length+' mốc ảnh khác nhau tại dự án';
+  }catch(e){$('#mWbN').textContent='Không lấy được danh sách ảnh theo năm';WB=null}
+  wbLoading=false;
+}
+$('#mWb').addEventListener('focus',loadWayback);$('#mWb').addEventListener('mousedown',loadWayback);
+$('#mWb').onchange=()=>{if(wbLayer){wbLayer.remove();wbLayer=null}const w=WB&&WB[+$('#mWb').value];if(!$('#mWb').value||!w)return;
+  wbLayer=L.tileLayer(w.url.replace('{level}','{z}').replace('{row}','{y}').replace('{col}','{x}'),{maxZoom:22,maxNativeZoom:19,attribution:'Esri Wayback '+w.d,opacity:$('#mWbO').value/100}).addTo(map);
+  $('#mWbN').textContent=`Đang xem ảnh năm ${w.y}${w.chup?' (chụp '+w.chup+(w.res?', độ phân giải '+w.res+' m':'')+')':''} — kéo Độ rõ để so với ảnh hiện tại`};
+$('#mWbO').oninput=()=>wbLayer&&wbLayer.setOpacity($('#mWbO').value/100);
+
+/* ================================================================
+   15. SỬA BẢN VẼ: tách thửa (vẽ đường cắt 2 điểm), gộp thửa (thửa sau mang nhãn thửa trước — tính chung
+   1 thửa, cộng diện tích), sửa nhãn tờ/thửa, hoàn tác; Lưu = ghi bando lên Drive (hoặc máy này)
+   ================================================================ */
+const ED={mode:'',t:null,pts:[],undo:[],dirty:false,ly:null};
+const edMsg=m=>$('#edMsg').textContent=m;
+function edSet(mode){
+  ED.mode=ED.mode===mode?'':mode;ED.t=null;ED.pts=[];if(ED.ly){ED.ly.remove();ED.ly=null}
+  document.querySelectorAll('[data-ed]').forEach(b=>b.classList.toggle('pri',b.dataset.ed===ED.mode));
+  edMsg({tach:'Bấm thửa cần tách, rồi bấm 2 điểm của đường cắt.',gop:'Bấm thửa giữ nhãn, rồi bấm thửa gộp vào.',nhan:'Bấm thửa cần sửa nhãn.','':''}[ED.mode]);
+  if(map)map.getContainer().style.cursor=ED.mode?'crosshair':'';
+}
+document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{if(meas)measEnd();edSet(b.dataset.ed)});
+const edPush=(rm,add)=>{ED.undo.push({rm,add});ED.dirty=true;$('#edUndo').disabled=false;$('#edSave').disabled=false};
+const edApply=(rm,add)=>{MAP.thua=MAP.thua.filter(t=>!rm.includes(t)).concat(add);buildParcels();drawMap();render()};
+const toLocal=ll=>{const [x,y]=toVN(ll);return[+(x-MAP.o[0]).toFixed(2),+(y-MAP.o[1]).toFixed(2)]};
+/* cắt đa giác bằng 1 đường thẳng (Sutherland–Hodgman với nửa mặt phẳng) */
+function clipHalf(v,a,b,sgn){const sd=p=>sgn*((b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]));const out=[];
+  for(let i=0;i<v.length;i++){const P=v[i],Q=v[(i+1)%v.length],sp=sd(P),sq=sd(Q);if(sp>=0)out.push(P);if((sp>=0)!==(sq>=0)){const t=sp/(sp-sq);out.push([+(P[0]+t*(Q[0]-P[0])).toFixed(2),+(P[1]+t*(Q[1]-P[1])).toFixed(2)])}}return out}
+async function edClick(t,ll){
+  if(ED.mode==='nhan'&&t){const v=await hoi(`Nhãn mới cho thửa ${t.l} (dạng tờ/thửa, vd 134/7)`,'Tờ/thửa');if(!v||!/^\s*[\w.-]+\s*\/\s*[\w.-]+\s*$/.test(v))return v&&toast('Nhãn phải dạng tờ/thửa');
+    const n={...t,l:v.replace(/\s+/g,'')};edPush([t],[n]);edApply([t],[n]);edMsg(`Đã đổi ${t.l} → ${n.l}. Bấm thửa khác hoặc Lưu.`);return}
+  if(ED.mode==='gop'&&t){if(!ED.t){ED.t=t;edMsg(`Giữ nhãn ${t.l} — bấm thửa gộp vào.`);return}
+    if(t===ED.t)return;const n={...t,l:ED.t.l};edPush([t],[n]);edApply([t],[n]);edMsg(`Đã gộp ${t.l} vào ${ED.t.l}. Bấm thửa khác để gộp tiếp, hoặc Lưu.`);return}
+  if(ED.mode==='tach'){
+    if(!ED.t){if(!t)return;ED.t=t;ED.pts=[];edMsg(`Tách ${t.l}: bấm điểm đầu đường cắt.`);return}
+    ED.pts.push(ll);if(ED.ly)ED.ly.remove();ED.ly=L.polyline(ED.pts,{color:'#ff3b3b',weight:3,dashArray:'6 4'}).addTo(map);
+    if(ED.pts.length<2){edMsg('Bấm điểm cuối đường cắt.');return}
+    const a=toLocal(ED.pts[0]),b=toLocal(ED.pts[1]),T=ED.t,p1=clipHalf(T.v,a,b,1),p2=clipHalf(T.v,a,b,-1);
+    ED.ly.remove();ED.ly=null;ED.pts=[];ED.t=null;
+    if(p1.length<3||p2.length<3||polyArea(p1)<.05||polyArea(p2)<.05){edMsg('Đường cắt không đi qua thửa — bấm lại thửa cần tách.');return}
+    const [to,th]=String(T.l).split('/');const nl=await hoi(`Đã chia ${T.l} thành ${f1(polyArea(p1))} m² và ${f1(polyArea(p2))} m². Nhãn phần nhỏ hơn?`,'Tờ/thửa phần nhỏ');
+    if(nl===false){edMsg('Đã hủy tách.');return}
+    const [big,small]=polyArea(p1)>=polyArea(p2)?[p1,p2]:[p2,p1];
+    const n1={id:T.id+'a',l:T.l,v:big},n2={id:T.id+'b',l:(nl||'').replace(/\s+/g,'')||(to+'/'+th+'-1'),v:small};
+    edPush([T],[n1,n2]);edApply([T],[n1,n2]);edMsg(`Đã tách ${T.l} → ${n1.l} (${f1(polyArea(big))} m²) + ${n2.l} (${f1(polyArea(small))} m²).`);return}
+}
+$('#edUndo').onclick=()=>{const u=ED.undo.pop();if(!u)return;MAP.thua=MAP.thua.filter(t=>!u.add.includes(t)).concat(u.rm);buildParcels();drawMap();render();$('#edUndo').disabled=!ED.undo.length;ED.dirty=true;$('#edSave').disabled=false;edMsg('Đã hoàn tác.')};
+$('#edSave').onclick=async()=>{const m={...MAP};delete m._src;
+  try{if(CFG.api){toast('Đang lưu bản vẽ lên Drive…');await api('putMap',{map:m})}else await idb.set('bando',m);ED.dirty=false;ED.undo=[];$('#edSave').disabled=true;$('#edUndo').disabled=true;toast('Đã lưu bản vẽ');edMsg('Đã lưu.')}catch(e){toast('Lỗi lưu: '+e.message)}};
+window.addEventListener('beforeunload',e=>{if(ED.dirty){e.preventDefault();e.returnValue=''}});
 
 route();load();
 }

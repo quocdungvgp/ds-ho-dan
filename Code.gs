@@ -30,14 +30,15 @@ const COT = [
   ['to_bd', 'Số tờ'], ['thua', 'Số thửa'], ['dt', 'Diện tích thu hồi (m²)'], ['giaitoa', 'Giải tỏa'],
   ['tb_so', 'Số thông báo'], ['tb_ngay', 'Ngày thông báo'], ['tb_file', 'File thông báo (Drive ID)'],
   ['tb_ten', 'Tên file thông báo'], ['anh', 'Số ảnh hiện trạng'], ['ht', 'Link hồ sơ hiện trạng'],
+  ['ht_file', 'File ảnh hiện trạng (Drive ID)'], ['ht_ten', 'Tên file ảnh hiện trạng'],
   ['duyet', 'Chờ duyệt'], ['ghichu', 'Ghi chú'], ['by', 'Người sửa cuối'], ['at', 'Lúc sửa cuối'], ['id', 'id']
 ];
-const DATA_KEYS = COT.map(c => c[0]).filter(k => ['id', 'by', 'at', 'tb_file', 'tb_ten'].indexOf(k) < 0);
+const DATA_KEYS = COT.map(c => c[0]).filter(k => ['id', 'by', 'at', 'tb_file', 'tb_ten', 'ht_file', 'ht_ten'].indexOf(k) < 0);
 const U_COT = ['Tên đăng nhập', 'Họ tên', 'Quyền', 'Phạm vi tổ', 'Mật khẩu (mã hóa)', 'Muối', 'Khóa', 'Đăng nhập lần cuối'];
 const DN_COT = ['id', 'Loại', 'Hộ id', 'Nội dung', 'Người đề nghị', 'Lúc', 'Trạng thái', 'Người duyệt', 'Lúc duyệt', 'Lý do'];
 const NK_COT = ['Lúc', 'Người', 'Việc', 'Hộ id', 'Chi tiết'];
 const QUYEN = ['quantri', 'sua', 'denghi', 'xem'];
-const LOAI_TEN = { sua: 'sửa hộ', them: 'thêm hộ', xoa: 'xóa hộ', kem: 'đính kèm thông báo', go: 'gỡ thông báo' };
+const LOAI_TEN = { sua: 'sửa hộ', them: 'thêm hộ', xoa: 'xóa hộ', kem: 'đính kèm thông báo', go: 'gỡ thông báo', kemht: 'đính kèm ảnh hiện trạng', goht: 'gỡ ảnh hiện trạng' };
 
 /* ================================================================== */
 function caiDat() {
@@ -95,6 +96,7 @@ function route_(me, q) {
     case 'delete': return change_(me, 'xoa', { id: q.id, lydo: q.lydo || '' });
     case 'uploadTB': return uploadTB_(me, q);
     case 'delTB': return change_(me, 'go', { id: q.id });
+    case 'delHT': return change_(me, 'goht', { id: q.id });
     /* ---- đề nghị ---- */
     case 'approve': need_(me, 'quantri'); return { ok: true, n: decide_(me, q.ids || [q.id], true) };
     case 'reject': need_(me, 'quantri'); return { ok: true, n: decide_(me, q.ids || [q.id], false, q.lydo) };
@@ -224,7 +226,7 @@ function replaceAll_(rows, me) {
 function change_(me, loai, data) {
   need_(me, 'denghi');
   const cu = data.id ? getRow_(data.id) : null;
-  if (loai === 'sua' || loai === 'xoa' || loai === 'go') { if (!cu) throw new Error('Không thấy hộ'); scope_(me, cu.to); }
+  if (loai === 'sua' || loai === 'xoa' || loai === 'go' || loai === 'goht') { if (!cu) throw new Error('Không thấy hộ'); scope_(me, cu.to); }
   if (loai === 'them') scope_(me, data.to);
   if (loai === 'sua' && data.to !== undefined) scope_(me, data.to);   // đổi sang tổ khác cũng phải trong phạm vi
   if (loai === 'sua') {   // chỉ giữ trường có thay đổi
@@ -248,22 +250,27 @@ function apply_(me, loai, hoId, d) {
   } else if (loai === 'xoa') {
     const at = rowIndex_(hoId); if (at > 0) tab_(TEN_TAB).deleteRow(at);
     log_(me, 'xóa hộ', hoId, d.lydo || '');
-  } else if (loai === 'kem') {
+  } else if (loai === 'kem' || loai === 'kemht') {
+    const [fF, fT] = loai === 'kem' ? ['tb_file', 'tb_ten'] : ['ht_file', 'ht_ten'];
     const cu = getRow_(hoId); if (!cu) throw new Error('Hộ đã bị xóa');
-    if (cu.tb_file && cu.tb_file !== d.fileId) { try { DriveApp.getFileById(cu.tb_file).setTrashed(true); } catch (e) {} }
-    upsert_({ id: hoId, tb_file: d.fileId, tb_ten: d.name }, me); log_(me, 'đính kèm thông báo', hoId, d.name);
-  } else if (loai === 'go') {
-    const cu = getRow_(hoId); if (cu && cu.tb_file) { try { DriveApp.getFileById(cu.tb_file).setTrashed(true); } catch (e) {} }
-    upsert_({ id: hoId, tb_file: '', tb_ten: '' }, me); log_(me, 'gỡ thông báo', hoId, cu ? cu.tb_ten : '');
+    if (cu[fF] && cu[fF] !== d.fileId) { try { DriveApp.getFileById(cu[fF]).setTrashed(true); } catch (e) {} }
+    const o = { id: hoId }; o[fF] = d.fileId; o[fT] = d.name; if (loai === 'kemht' && d.anh) o.anh = d.anh;
+    upsert_(o, me); log_(me, LOAI_TEN[loai], hoId, d.name);
+  } else if (loai === 'go' || loai === 'goht') {
+    const [fF, fT] = loai === 'go' ? ['tb_file', 'tb_ten'] : ['ht_file', 'ht_ten'];
+    const cu = getRow_(hoId); if (cu && cu[fF]) { try { DriveApp.getFileById(cu[fF]).setTrashed(true); } catch (e) {} }
+    const o = { id: hoId }; o[fF] = ''; o[fT] = ''; upsert_(o, me); log_(me, LOAI_TEN[loai], hoId, cu ? cu[fT] : '');
   }
 }
 function diffOnly_(d) { const o = {}; Object.keys(d).forEach(k => { if (DATA_KEYS.indexOf(k) >= 0) o[k] = d[k]; }); return o; }
 function uploadTB_(me, q) {
   need_(me, 'denghi');
   const cu = getRow_(q.id); if (!cu) throw new Error('Không thấy hộ'); scope_(me, cu.to);
-  const f = folder_().createFile(Utilities.newBlob(Utilities.base64Decode(q.b64), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', q.name || 'thong-bao.docx'));
-  if (me.q === 'denghi') return { ok: true, pending: propose_(me, 'kem', q.id, { fileId: f.getId(), name: q.name }), fileId: f.getId() };
-  apply_(me, 'kem', q.id, { fileId: f.getId(), name: q.name });
+  const ht = q.kind === 'ht', loai = ht ? 'kemht' : 'kem';
+  const f = folder_().createFile(Utilities.newBlob(Utilities.base64Decode(q.b64), ht ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', q.name || (ht ? 'hien-trang.pdf' : 'thong-bao.docx')));
+  const d = { fileId: f.getId(), name: q.name, anh: q.anh || '' };
+  if (me.q === 'denghi') return { ok: true, pending: propose_(me, loai, q.id, d), fileId: f.getId() };
+  apply_(me, loai, q.id, d);
   return { ok: true, fileId: f.getId() };
 }
 
@@ -296,7 +303,7 @@ function decide_(me, ids, ok, lydo) {
   const s = tab_('DeNghi'); let n = 0;
   dnRows_().filter(d => ids.indexOf(d.id) >= 0 && d.st === 'cho').forEach(d => {
     if (ok) { try { apply_({ ten: d.by, hoten: d.by + ' (duyệt: ' + me.ten + ')' }, d.loai, d.hoId, d.data); } catch (e) { s.getRange(d.row, 7, 1, 4).setValues([['loi', me.ten, new Date(), String(e.message)]]); return; } }
-    else if (d.loai === 'kem' && d.data.fileId) { try { DriveApp.getFileById(d.data.fileId).setTrashed(true); } catch (e) {} }
+    else if ((d.loai === 'kem' || d.loai === 'kemht') && d.data.fileId) { try { DriveApp.getFileById(d.data.fileId).setTrashed(true); } catch (e) {} }
     s.getRange(d.row, 7, 1, 4).setValues([[ok ? 'duyet' : 'tuchoi', me.ten, new Date(), ok ? d.lydo : (lydo || '')]]);
     log_(me, (ok ? 'duyệt ' : 'từ chối ') + (LOAI_TEN[d.loai] || d.loai) + ' của ' + d.by, d.hoId, lydo || '');
     n++;
@@ -306,7 +313,7 @@ function decide_(me, ids, ok, lydo) {
 function withdraw_(me, id) {
   const d = dnRows_().find(x => x.id === id && x.st === 'cho'); if (!d) return { ok: false, error: 'Không thấy đề nghị' };
   if (d.by !== me.ten && me.q !== 'quantri') return { ok: false, error: 'Chỉ người gửi mới rút được' };
-  if (d.loai === 'kem' && d.data.fileId) { try { DriveApp.getFileById(d.data.fileId).setTrashed(true); } catch (e) {} }
+  if ((d.loai === 'kem' || d.loai === 'kemht') && d.data.fileId) { try { DriveApp.getFileById(d.data.fileId).setTrashed(true); } catch (e) {} }
   tab_('DeNghi').getRange(d.row, 7, 1, 3).setValues([['rut', me.ten, new Date()]]);
   return { ok: true };
 }
@@ -346,6 +353,6 @@ function file_(name) { const it = folder_().getFilesByName(name); return it.hasN
 function saveFile_(name, blob) { const f = file_(name); if (f) f.setTrashed(true); folder_().createFile(blob.setName(name)); }
 /* chỉ cho tải file thông báo đang gắn với hộ hoặc đề nghị — không cho đọc file Drive bất kỳ */
 function fileOk_(id) {
-  if (list_().some(r => r.tb_file === id) || dnRows_().some(d => d.st === 'cho' && d.data.fileId === id)) return id;
+  if (list_().some(r => r.tb_file === id || r.ht_file === id) || dnRows_().some(d => d.st === 'cho' && d.data.fileId === id)) return id;
   throw new Error('File không thuộc danh sách này');
 }
