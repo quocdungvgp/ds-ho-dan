@@ -6,6 +6,7 @@
 | `index.html` | Trang web (2 thẻ: Danh sách hộ dân, Bản đồ dự án). Đưa lên host bất kỳ (Cloudflare Pages, GitHub Pages, hosting của Ban). |
 | `Code.gs` | Máy chủ Google Apps Script: lưu danh sách hộ vào Google Sheet, file thông báo/bản vẽ/mẫu vào Google Drive. |
 | `dxf2bando.py` | Đổi bản vẽ CAD (DXF, VN2000) ra `bando.json` cho bản đồ. |
+| `sw.js`, `manifest.json`, `icon.svg` | Cài trang như ứng dụng, mở được khi mất sóng — để cùng thư mục với index.html. |
 | `mau-thong-bao-vi-du.docx` | Ví dụ mẫu Word có ô điền «HOTEN» «DT»… |
 
 ## 1. Danh sách hộ
@@ -82,12 +83,20 @@ Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm
 - **Nạp bản vẽ** nhận thêm GeoJSON và KML (Google Earth, VN2GE). Nhãn thửa lấy từ tên Placemark hoặc thuộc tính SoTo/SoThua.
 - **⊕ Gộp thửa**: 2 thửa liền nhau giờ hợp thành 1 đa giác thật, diện tích cộng lại; không liền nhau thì gộp theo nhãn như trước.
 
+## Dùng ngoài thực địa khi mất sóng
+- Trên điện thoại mở trang → menu trình duyệt → **Thêm vào màn hình chính**: trang chạy như ứng dụng, mất sóng vẫn mở được, vẫn xem danh sách đọc lần cuối.
+- Mất sóng mà vẫn sửa hộ / đính kèm: trang cất lại, dòng hộ có nhãn **⇡ chờ gửi**, thanh trên cùng hiện **⇡ N chờ gửi**. Có sóng trang tự gửi (hoặc bấm nút đó). Máy chủ vẫn kiểm quyền khi gửi.
+- Mất sóng thì ảnh nền vệ tinh không tải — thửa vẫn hiện trên nền xám.
+
+## Câu chữ mẫu thông báo (tự sửa Word theo web)
+⚙ Cấu hình → mục gập **Câu chữ mẫu thông báo**: khai chữ đứng ngay trước / ngay sau họ tên, diện tích, toàn bộ/một phần, số thửa, số tờ trong mẫu TB của dự án (mặc định theo mẫu TB thu hồi đất chuẩn). Cấu hình chung — quản trị đặt một lần cho cả dự án.
+
 ## Cập nhật Code.gs khi có bản mới
-Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
+Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên). Bản có thêm cột thì chạy lại `caiDat()`; lần đầu dùng sao lưu/email thì chạy `caiTuDong()`.
 
 ## Thông báo Word tự sửa theo web
 Sửa họ tên, diện tích, toàn phần/một phần, thửa, tờ trên web → mỗi lần **Tải / Xem trước / Tải zip** thông báo, trang tự thay đúng chỗ lệch trong file (giữ định dạng chữ). File gốc trên Drive chỉ đổi khi bấm **⟳ Đồng bộ file Word**: trang so mọi thông báo đang lọc, liệt kê chỗ lệch, đồng ý thì ghi hẳn.
-Trang tìm theo câu chữ mẫu thông báo thu hồi đất chuẩn: “Thu hồi đất của Ông/Bà …”, “Diện tích đất dự kiến thu hồi: … m²”, “thuộc toàn bộ/một phần thửa đất số …, tờ bản đồ số …”. Mẫu dự án khác câu chữ thì sửa mảng `TB_FLD` trong index.html.
+Trang tìm theo câu chữ mẫu thông báo thu hồi đất chuẩn: “Thu hồi đất của Ông/Bà …”, “Diện tích đất dự kiến thu hồi: … m²”, “thuộc toàn bộ/một phần thửa đất số …, tờ bản đồ số …”. Mẫu dự án khác câu chữ thì khai ở ⚙ Cấu hình → *Câu chữ mẫu thông báo*.
 
 ## Ảnh hiện trạng (PDF)
 Nút **📷 Ảnh HT (PDF)** trên dòng hộ: đính kèm file PDF hồ sơ hiện trạng (Timemark: mỗi trang 1 ảnh). Trang tự đếm số ảnh; bấm 📷 để xem lưới ảnh, bấm ảnh xem lớn, ← → lật. Lưu trên Drive cùng thư mục thông báo. Sheet cũ chạy lại `caiDat()` để thêm cột *File ảnh hiện trạng*.

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Danh sách hộ dân · Bản đồ dự án</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#9b1530"><link rel="icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -158,6 +159,7 @@ tr.flash td{animation:fl2 .6s 4 alternate}@keyframes fl2{to{background:#ffe8a3}}
   <button class="btn sm" id="bDuyet" hidden>✔ Duyệt <span class="tag t1" id="nDuyet">0</span></button>
   <button class="btn sm" id="bUsers" hidden>👥 Người dùng</button>
   <button class="btn sm" id="bLog" hidden>📜 Nhật ký</button>
+  <button class="btn sm" id="bHang" hidden title="Thay đổi làm lúc mất mạng, chưa gửi lên máy chủ — bấm để gửi ngay">⇡ <span id="nHang">0</span> chờ gửi</button>
   <button class="btn sm" id="bCfg">⚙ Cấu hình · nhập dữ liệu</button>
   <button class="btn sm" id="bMe" hidden></button>
 </div></header>
@@ -311,6 +313,14 @@ tr.flash td{animation:fl2 .6s 4 alternate}@keyframes fl2{to{background:#ffe8a3}}
   </div>
   <div class="full" id="linkBox" hidden><label>Link dự án — gửi anh em, mở là tự nối đúng dự án (không chứa mật khẩu)</label><div class="row" style="flex-wrap:nowrap"><input id="linkDA" readonly><button type="button" class="btn sm" id="iCopy">Chép</button></div>
   </div>
+  <details class="full"><summary class="note" style="cursor:pointer">Câu chữ mẫu thông báo — để trang tự sửa file Word theo web (chữ đứng ngay trước / ngay sau giá trị)</summary>
+    <div class="gdgrid" style="margin-top:6px">
+      <label class="note">Họ tên — trước<input name="tbm_ten_a"></label><label class="note">sau (để “.” = hết đoạn)<input name="tbm_ten_b"></label>
+      <label class="note">Diện tích — trước<input name="tbm_dt_a"></label><label class="note">sau<input name="tbm_dt_b"></label>
+      <label class="note">Toàn bộ/một phần — trước<input name="tbm_giaitoa_a"></label><label class="note">sau<input name="tbm_giaitoa_b"></label>
+      <label class="note">Số thửa — trước<input name="tbm_thua_a"></label><label class="note">sau<input name="tbm_thua_b"></label>
+      <label class="note">Số tờ — trước<input name="tbm_to_bd_a"></label><label class="note">sau<input name="tbm_to_bd_b"></label>
+    </div><p class="note">Để trống ô “trước” = không tự sửa trường đó.</p></details>
   <div class="full" id="mauVbBox"></div>
   <p class="full note" id="cfgStat"></p>
   <div class="row"><button class="btn" value="cancel" formnovalidate>Đóng</button><button class="btn pri" value="ok">Lưu cấu hình</button></div>
@@ -407,7 +417,7 @@ const idb=(()=>{let P;const db=()=>P||(P=new Promise((ok,no)=>{const r=indexedDB
 /* ================================================================
    2. CẤU HÌNH (lưu trên máy này)
    ================================================================ */
-const CFG0={duAn:'Dự án Tuyến đường sắt đô thị số 2 · P. Thạnh Mỹ Tây',donVi:'Ban Quản lý dự án đầu tư xây dựng phường …',api:'',maDuoi:'MT2',nguong:'36',hanBG:'',sheetUrl:''};
+const CFG0={...{tbm_ten_a:'Thu hồi đất của',tbm_ten_b:'.',tbm_dt_a:'Diện tích đất dự kiến thu hồi:',tbm_dt_b:'',tbm_giaitoa_a:'thuộc',tbm_giaitoa_b:'thửa đất',tbm_thua_a:'thửa đất số',tbm_thua_b:', tờ bản đồ',tbm_to_bd_a:'tờ bản đồ số',tbm_to_bd_b:''},duAn:'Dự án Tuyến đường sắt đô thị số 2 · P. Thạnh Mỹ Tây',donVi:'Ban Quản lý dự án đầu tư xây dựng phường …',api:'',maDuoi:'MT2',nguong:'36',hanBG:'',sheetUrl:''};
 let CFG={...CFG0};try{Object.assign(CFG,JSON.parse(localStorage.getItem('dsho_cfg')||'{}'))}catch(e){}
 const saveCfg=()=>{try{localStorage.setItem('dsho_cfg',JSON.stringify(CFG))}catch(e){}};
 /* LINK DỰ ÁN: …/ds-ho-dan/?api=<URL Apps Script> — mở là tự nối đúng dự án, rồi xóa tham số khỏi thanh địa chỉ */
@@ -432,11 +442,21 @@ const isAdmin=()=>has('quantri');
 /* ================================================================
    4. DỮ LIỆU — Google Sheet qua Apps Script, hoặc lưu trên máy
    ================================================================ */
-const SHARED=['duAn','donVi','maDuoi','nguong','hanBG'];   // cấu hình chung của dự án, quản trị đặt, lưu ở máy chủ
+const SHARED=['duAn','donVi','maDuoi','nguong','hanBG',...['ten','dt','giaitoa','thua','to_bd'].flatMap(k=>['tbm_'+k+'_a','tbm_'+k+'_b'])];   // cấu hình chung của dự án, quản trị đặt, lưu ở máy chủ
 let VER=null;
 let D=[],CHO=[],MAP=null,MAU=null,readAt=null,isSample=false;
-async function api(action,payload={}){
-  const r=await fetch(CFG.api,{method:'POST',body:JSON.stringify({action,token:TOKEN,...payload})});
+/* MẤT SÓNG: lệnh sửa (QUEUE_A) gửi không được → cất vào hàng đợi IndexedDB 'hang', trả {ok,queued}; có mạng thì guiHang() gửi lần lượt.
+   Danh sách đọc được lần cuối lưu ở 'dsCache' → mất mạng vẫn xem được, cộng các sửa đang chờ (apHang). */
+const QUEUE_A=['upsert','delete','uploadTB','delTB','delHT','bulk'];
+let HANG=[];idb.get('hang').then(h=>{HANG=h||[];hangUI()});
+const hangUI=()=>{$('#bHang').hidden=!HANG.length;$('#nHang').textContent=HANG.length};
+const luuHang=()=>{hangUI();return idb.set('hang',HANG)};
+let OFF=false;
+async function api(action,payload={},thang){
+  let r;
+  try{r=await fetch(CFG.api,{method:'POST',body:JSON.stringify({action,token:TOKEN,...payload})})}
+  catch(e){OFF=true;if(!thang&&QUEUE_A.includes(action)){HANG.push({action,payload,at:Date.now(),by:ME&&ME.ten});await luuHang();return{ok:true,queued:true}}throw new Error('Mất kết nối máy chủ')}
+  OFF=false;
   const j=await r.json();
   if(j.auth){ME=null;TOKEN='';try{localStorage.removeItem('dsho_tk')}catch(e){};showLogin('Phiên đăng nhập đã hết — đăng nhập lại.');throw new Error('Chưa đăng nhập')}
   if(!j.ok)throw new Error(j.error||'Máy chủ từ chối');return j;
@@ -446,8 +466,11 @@ async function load(nhe){
   if(CFG.api){
     if(!TOKEN){ME=null;D=[];CHO=[];render();showLogin();return}
     try{const j=await api('list');D=j.rows||[];CHO=j.cho||[];ME=j.me;readAt=new Date();isSample=false;CFG.sheetUrl=j.sheetUrl||'';VER=null;
-      for(const k of SHARED)if(j.cfg&&j.cfg[k]!==undefined&&j.cfg[k]!=='')CFG[k]=j.cfg[k]}
-    catch(e){if(TOKEN)toast('Không đọc được Google Sheet: '+e.message);D=[];CHO=[]}
+      idb.set('dsCache',{api:CFG.api,rows:D,cho:CHO,me:ME,cfg:j.cfg,at:Date.now()});apHang();
+      for(const k of SHARED)if(j.cfg&&j.cfg[k]!==undefined&&(j.cfg[k]!==''||/^tbm_.*_b$/.test(k)))CFG[k]=j.cfg[k]}
+    catch(e){const c=OFF&&await idb.get('dsCache');
+      if(c&&c.api===CFG.api){D=c.rows;CHO=c.cho||[];ME=ME||c.me;readAt=new Date(c.at);isSample=false;apHang();toast('Mất mạng — đang xem dữ liệu lưu lúc '+readAt.toLocaleString('vi-VN'))}
+      else{if(TOKEN)toast('Không đọc được Google Sheet: '+e.message);D=[];CHO=[]}}
   }else{ME=LOCAL_ME;CHO=[];await loadLocal()}
   if(!nhe){
     MAP=await loadMap();
@@ -470,8 +493,23 @@ async function loadMap(){
   else{const m=await idb.get('bando');if(m){m._src='bản vẽ đã nạp trên máy này';return m}}
   const s=sampleMap();s._src='bản vẽ MẪU (tự sinh) — nạp bando.json của dự án ở ⚙ Cấu hình';return s;
 }
+/* áp các sửa đang chờ lên danh sách đang xem (chỉ để nhìn — máy chủ quyết định khi gửi) */
+function apHang(){for(const q of HANG){const p=q.payload||{};
+  if(q.action==='upsert'&&p.row){const i=D.findIndex(r=>String(r.id)===String(p.row.id));if(i>=0)D[i]={...D[i],...p.row,_cho:1};else D.push({...p.row,_cho:1})}
+  else if(q.action==='delete')D=D.filter(r=>String(r.id)!==String(p.id))}}
+let dangGui=false;
+async function guiHang(){
+  if(dangGui||!HANG.length||!CFG.api||!TOKEN)return;dangGui=true;let n=0,loi=[];
+  try{while(HANG.length){const q=HANG[0];let j;try{j=await api(q.action,q.payload,true)}catch(e){if(OFF)break;j={ok:false,error:e.message}}
+      if(!j.ok)loi.push(q.action+': '+j.error);else n++;HANG.shift();await luuHang()}}
+  finally{dangGui=false}
+  if(n||loi.length){toast(`Đã gửi ${n} thay đổi làm lúc mất mạng`+(loi.length?` · ${loi.length} bị từ chối (${loi[0]})`:''));await load(true)}
+}
+window.addEventListener('online',()=>guiHang());
+$('#bHang').onclick=()=>guiHang().then(()=>HANG.length&&toast('Vẫn chưa có mạng — thử lại sau'));
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 /* sau mỗi thay đổi trên máy chủ: báo có hiệu lực hay thành đề nghị, rồi đọc lại */
-const xong=(j,viec)=>{toast(j&&j.pending?`Đã gửi đề nghị ${viec}, chờ quản trị duyệt`:j&&j.nochange?'Không có gì thay đổi':`Đã ${viec}`);return load(true)};
+const xong=(j,viec)=>{if(j&&j.queued){toast(`Mất mạng — đã cất “${viec}” chờ gửi (${HANG.length} việc). Có sóng trang tự gửi.`);return load(true)}toast(j&&j.pending?`Đã gửi đề nghị ${viec}, chờ quản trị duyệt`:j&&j.nochange?'Không có gì thay đổi':`Đã ${viec}`);return load(true)};
 async function saveRow(r,viec='lưu'){
   if(CFG.api){const o={};for(const k in r)if(!k.startsWith('_'))o[k]=r[k];return xong(await api('upsert',{row:o}),viec)}
   r.by=ME.hoten;r.at=new Date().toISOString();saveLocal();toast('Đã '+viec);render();if(mapReady)drawMap();
@@ -692,7 +730,7 @@ function list(){
     const sh=(k,l,c='')=>`<th class="${c}"><button class="lk" data-sort="${k}" style="text-decoration:none">${l}${sortK===k?(sortD>0?' ▲':' ▼'):''}</button></th>`;
     h='<tr>'+sh('stt','STT')+sh('ma','Mã số hồ sơ')+sh('canbo','Cán bộ thụ lý')+sh('ten','Họ và tên')+sh('diachi','Địa chỉ thu hồi')+'<th>P · KP</th>'+sh('to','Tổ')+sh('thua','Tờ · Thửa')+sh('dt','DT thu hồi (m²)','n')+sh('gd','Giải tỏa · Tiến độ')+'<th>Thông báo thu hồi đất</th></tr>';
     body=R.map(r=>{const cl=conLai(r);return`<tr><td>${esc(r.stt)}</td><td>${r.ma?`<span class="code">${esc(r.ma)}</span>`:'<span class="note">chưa cấp mã</span>'}</td><td>${r.canbo?esc(r.canbo):'<span class="warn note">chưa có</span>'}</td>
-      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📎 Ảnh HT (PDF)</button>`}<button data-a="chup" data-id="${esc(r.id)}" title="Chụp bằng điện thoại / chọn ảnh — tự đóng dấu giờ, GPS, gộp thành PDF">📷 Chụp ảnh HT</button><button data-a="nhan" data-id="${esc(r.id)}">🏷 QR</button><button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${MAUVB.length?`<div class="act noprint"><button data-a="vb" data-id="${esc(r.id)}">📄 Văn bản</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
+      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${r._cho?'<div><span class="tag t1">⇡ chờ gửi (mất mạng)</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📎 Ảnh HT (PDF)</button>`}<button data-a="chup" data-id="${esc(r.id)}" title="Chụp bằng điện thoại / chọn ảnh — tự đóng dấu giờ, GPS, gộp thành PDF">📷 Chụp ảnh HT</button><button data-a="nhan" data-id="${esc(r.id)}">🏷 QR</button><button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${MAUVB.length?`<div class="act noprint"><button data-a="vb" data-id="${esc(r.id)}">📄 Văn bản</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
       <td style="white-space:nowrap"><button class="lk" data-a="map" data-id="${esc(r.id)}" title="Xem trên bản đồ">Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)}</button></td>
       <td class="n">${num(r.dt)?f1(num(r.dt)):'<span class="warn">cần bổ sung</span>'}${cl.v!==undefined?`<div class="note ${cl.k==='duoi'?'warn':''}">còn lại ${f1(cl.v)} m²</div>`:''}</td>
@@ -741,15 +779,16 @@ async function taoLoat(){
 /* ---- TỰ SỬA FILE WORD THEO WEB ----
    Mỗi lần Tải / Xem trước / Tải zip: đọc thông báo, so với thông tin hộ trên web, thay đúng chỗ lệch
    (giữ nguyên định dạng chữ của đoạn). File gốc trên Drive chỉ đổi khi bấm "Đồng bộ file Word".
-   Mẫu tìm theo câu chữ thông báo thu hồi đất chuẩn — mẫu dự án khác câu chữ thì sửa TB_FLD. */
+   Tìm theo MỐC CÂU CHỮ trong cấu hình chung (⚙ Cấu hình → Câu chữ mẫu thông báo) — mặc định theo mẫu TB thu hồi đất chuẩn. */
 const W_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-const TB_FLD=[
-  ['ten','họ tên',/Thu hồi đất của\s+(?:Ông\/Bà|Ông|Bà)?\s*(.+?)\.?\s*$/d,r=>String(r.ten||'').trim().replace(/^(Ông\/Bà|Ông|Bà)\s+/i,'')],
-  ['dt','diện tích',/Diện tích đất dự kiến thu hồi:\s*([\d.,]+)/d,r=>num(r.dt)?f1(num(r.dt)):''],
-  ['giaitoa','toàn bộ/một phần',/thuộc\s+(toàn bộ|một phần)\s+thửa đất/id,r=>r.giaitoa==='Toàn phần'?'toàn bộ':r.giaitoa==='Một phần'?'một phần':''],
-  ['thua','thửa',/thửa đất số\s+(.+?),\s*tờ bản đồ/d,r=>String(r.thua||'').trim()],
-  ['to_bd','tờ',/tờ bản đồ số\s+(\d+)/d,r=>String(r.to_bd||'').trim()]
-];
+/* MỐC CÂU CHỮ (cấu hình chung tbm_<trường>_a = chữ ngay trước giá trị, _b = chữ ngay sau) → biểu thức tìm. */
+const TBM=[['ten','họ tên','(.+?)'],['dt','diện tích','([\\d.,]+)'],['giaitoa','toàn bộ/một phần','(toàn bộ|một phần)'],['thua','thửa','(.+?)'],['to_bd','tờ','(\\d+[A-Za-z]?)']];
+const TBM0={tbm_ten_a:'Thu hồi đất của',tbm_ten_b:'.',tbm_dt_a:'Diện tích đất dự kiến thu hồi:',tbm_dt_b:'',tbm_giaitoa_a:'thuộc',tbm_giaitoa_b:'thửa đất',tbm_thua_a:'thửa đất số',tbm_thua_b:', tờ bản đồ',tbm_to_bd_a:'tờ bản đồ số',tbm_to_bd_b:''};
+const reMoc=s=>String(s||'').trim().replace(/[.*+?^${}()|[\]\\\/]/g,'\\$&').replace(/\s+/g,'\\s+').replace(/,(\\s\+)?/g,',\\s*');
+const TB_GT={ten:r=>String(r.ten||'').trim().replace(/^(Ông\/Bà|Ông|Bà)\s+/i,''),dt:r=>num(r.dt)?f1(num(r.dt)):'',giaitoa:r=>r.giaitoa==='Toàn phần'?'toàn bộ':r.giaitoa==='Một phần'?'một phần':'',thua:r=>String(r.thua||'').trim(),to_bd:r=>String(r.to_bd||'').trim()};
+function tbFld(){return TBM.map(([k,lb,val])=>{const a=CFG['tbm_'+k+'_a']??TBM0['tbm_'+k+'_a'],b=CFG['tbm_'+k+'_b']??TBM0['tbm_'+k+'_b'];if(!String(a).trim())return null;
+  const ten=k==='ten'?'\\s*(?:Ông\\/Bà|Ông|Bà)?\\s*':'\\s*',sau=k==='ten'&&(!b||b.trim()==='.')?'\\.?\\s*$':b&&b.trim()?'\\s*'+reMoc(b):'';
+  try{return[k,lb,new RegExp(reMoc(a)+ten+val+sau,'d'+(k==='giaitoa'?'i':'')),TB_GT[k]]}catch(e){return null}}).filter(Boolean)}
 const sameV=(k,a,b)=>k==='dt'?Math.abs(num(a)-num(b))<.05:fold(a).replace(/\s+/g,' ').trim()===fold(b).replace(/\s+/g,' ').trim();
 async function docFix(buf,r){
   await need('jszip');
@@ -759,7 +798,7 @@ async function docFix(buf,r){
   const ch=[];
   for(const p of [...doc.getElementsByTagNameNS(W_NS,'p')]){
     const ts=()=>[...p.getElementsByTagNameNS(W_NS,'t')].filter(t=>{let a=t.parentNode;while(a&&!(a.localName==='p'&&a.namespaceURI===W_NS))a=a.parentNode;return a===p});
-    for(const [k,lb,re,fn] of TB_FLD){
+    for(const [k,lb,re,fn] of tbFld()){
       const T=ts(),txt=T.map(t=>t.textContent).join('');const m=re.exec(txt);if(!m)continue;
       const moi=fn(r),cu=m[1];if(!moi||sameV(k,cu,moi)||ch.some(c=>c.k===k))continue;
       let [a,b]=m.indices[1],pos=0,done=false;
@@ -1195,7 +1234,7 @@ $('#iCopy').onclick=async()=>{$('#linkDA').select();try{await navigator.clipboar
 /* có thay đổi ở máy khác thì tự đọc lại (hỏi máy chủ mỗi 60 giây, chỉ khi đang mở trang & không mở hộp nhập) */
 setInterval(async()=>{
   if(!CFG.api||!ME||document.hidden||document.querySelector('dialog[open]'))return;
-  try{const j=await api('ping');if(VER===null)VER=j.v;else if(j.v!==VER){VER=j.v;await load(true);toast('Đã cập nhật thay đổi mới')}}catch(e){}
+  try{const j=await api('ping');if(HANG.length)await guiHang();if(VER===null)VER=j.v;else if(j.v!==VER){VER=j.v;await load(true);toast('Đã cập nhật thay đổi mới')}}catch(e){}
 },60000);
 /* đính kèm hàng loạt: chọn nhiều file .docx hoặc 1 file .zip; ghép hộ theo STT trong tên file (TBTHD_STT008_… / STT8 / 008_…) */
 $('#bDongBo').onclick=()=>dongBo().catch(e=>toast(e.message));

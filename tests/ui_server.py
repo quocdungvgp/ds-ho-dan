@@ -1,7 +1,7 @@
 """Chạy thử chế độ nối Google Sheet: Code.gs chạy trên máy chủ giả lập (node tests/mock-gas.js — chạy lại mỗi lần test
 để dữ liệu sạch). Tài khoản admin / Doi-mat-khau-ngay-1 (MK_ADMIN_DAU). Chạy: python3 tests/ui_server.py"""
 import asyncio, urllib.parse, urllib.request, json
-from common import Run, FX, API, login, ok
+from common import Run, FX, API, MANG, login, ok
 
 LINK = 'http://local/index.html?api=' + urllib.parse.quote(API)
 
@@ -70,6 +70,16 @@ async def main():
         ok('Chi trả · 25/11/2026' in await xm.inner_text('#tMain tbody tr:nth-child(1)') and '31/03/2027' in await xm.inner_text('#gdHan'), 'tiến độ GPMB lưu Sheet, hạn bàn giao áp cho mọi người')
         urllib.request.urlopen('http://localhost:8787/__het'); await xm.click('#bReload'); await xm.wait_for_timeout(1000)
         ok(not await xm.evaluate("document.querySelector('#dLogin').open") and await xm.locator('#tMain tbody tr').count() >= 3, 'phiên đăng nhập sống qua mốc 6 giờ của Cache')
+        # mất sóng: sửa → cất hàng đợi, vẫn xem được; có mạng → tự gửi
+        MANG['tat'] = True
+        await ad.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await ad.fill('#fm [name=ghichu]', 'Sửa ngoài thực địa'); await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1200)
+        r1 = await ad.inner_text('#tMain tbody tr:nth-child(1)')
+        ok('Sửa ngoài thực địa' in r1 and 'chờ gửi' in r1 and await ad.inner_text('#nHang') == '1', 'mất mạng: sửa cất hàng đợi, danh sách vẫn hiện + đánh dấu chờ gửi')
+        MANG['tat'] = False; await ad.evaluate("window.dispatchEvent(new Event('online'))"); await ad.wait_for_timeout(2500)
+        await xm.click('#bReload'); await xm.wait_for_timeout(1000)
+        ok(await ad.locator('#bHang').is_hidden() and 'Sửa ngoài thực địa' in await xm.inner_text('#tMain tbody tr:nth-child(1)'), 'có mạng lại: tự gửi, máy khác thấy')
+        # câu chữ mẫu TB trong cấu hình chung
+        await ad.click('#bCfg'); ok(await ad.input_value('#fCfg [name=tbm_dt_a]') == 'Diện tích đất dự kiến thu hồi:', 'cấu hình: câu chữ mẫu TB có sẵn mặc định'); await ad.click('#fCfg button[value=cancel]')
         await ad.click('#bLog'); await ad.wait_for_timeout(800); ok('duyệt' in await ad.inner_text('#tLog'), 'nhật ký ghi thao tác')
         ok(not R.errs, 'không có lỗi JS ' + str(R.errs))
 

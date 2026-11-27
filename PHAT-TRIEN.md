@@ -1,6 +1,6 @@
 # PHÁT TRIỂN TIẾP — ds-ho-dan
 
-> **Đọc file này trước khi sửa code.** Đủ để làm tiếp mà không phải đọc lại cả `index.html` (~1.180 dòng).
+> **Đọc file này trước khi sửa code.** Đủ để làm tiếp mà không phải đọc lại cả `index.html` (~1.500 dòng).
 > Cách nhờ Claude làm tiếp, đỡ tốn token: *"Đọc PHAT-TRIEN.md trong repo quocdungvgp/ds-ho-dan, làm mục X ở phần Việc tiếp theo, chạy tests rồi đẩy lên."*
 
 - Trang: https://quocdungvgp.github.io/ds-ho-dan/ (GitHub Pages, nhánh `main`, thư mục gốc — đẩy lên ~1 phút là cập nhật)
@@ -17,7 +17,7 @@ Trình duyệt (index.html, 1 file, không build)          Google (mỗi dự á
   ├─ Danh sách hộ #ds  ─┐                               ┌─ Google Sheet: tab Tổng, NguoiDung, DeNghi, NhatKy
   ├─ Bản đồ #bando     ─┼── POST JSON {action,token} ──►│  Apps Script Code.gs (Ứng dụng web /exec)
   └─ IndexedDB/localStorage (chế độ không nối Sheet)    └─ Drive: TB .docx, ảnh HT .pdf, bando.json, mau-thong-bao.docx
-dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
+dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json · sw.js + manifest.json + icon.svg: cài như ứng dụng, mở được khi mất sóng
 ```
 
 - **2 chế độ**: `CFG.api` trống → chạy một mình trên máy (dữ liệu mẫu / Excel, lưu `localStorage` + IndexedDB `dsho`), `ME` = quản trị.
@@ -41,7 +41,7 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
 | 4b. DỮ LIỆU MẪU | `sample() sampleMap()` | |
 | 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()`, `filtered()`, đề nghị `CHO choOf virtRows choHtml`; **tiến độ GPMB** `GD GD_COL gdIdx gdOf gdNgay gdMatch gdCell renderGd()` | `gdIdx(r)` = bước đã xong (−1…6) |
 | 6. VẼ DANH SÁCH | `render()` (thẻ số, bảng tổ, chip, ô lọc) `tbCell() list() sortRows()` | |
-| 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`TB_FLD docFix()`** tự sửa Word theo web, `dongBo() zipTB hoi(msg,nhãn,mặcĐịnh)` | |
+| 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`tbFld() docFix()`** tự sửa Word theo web (mốc câu chữ `tbm_*` trong cấu hình chung), `dongBo() zipTB hoi(msg,nhãn,mặcĐịnh)` | |
 | 7b. NHIỀU MẪU VĂN BẢN | `truong(r)` bộ trường chung (cả mẫu TB), `TRUONG_DS`, `docSo()` số→chữ, `dien(mau,r)`, `MAUVB loadMauVB getMauVB putMauVB delMauVB moVB taoVB` | thêm trường: sửa `truong()` + `TRUONG_DS` |
 | 8. EXCEL | `COLS` (khóa, tiêu đề, regex nhận cột; `gdn_<bước>` = cột ngày ảo), `colVal()` giá trị xuất, `importXls exportXls` | |
 | 9. BẢN ĐỒ | `initMap CLS(tô màu: tb to gt cl anh gd) drawMap labels pickParcel suggest meas* exportKML`, `HO_IDX hoOf` | |
@@ -97,43 +97,40 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **56/56 OK** (27/11/2026). Test DXF cần `pip install ezdxf`. mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **60/60 OK** (27/11/2026). Test DXF cần `pip install ezdxf`. mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy), camera quét QR thật + GPS thật (test dùng nhánh “chọn ảnh”).
 
 ## 6. Đẩy lên
 
-Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập nhật). Sửa `Code.gs` thì nhắc người dùng: dán đè trong Apps Script → Triển khai → Quản lý triển khai → ✎ → **Phiên bản mới**; thêm cột thì chạy `caiDat()`.
+Sửa → `sh tests/chay.sh` → `git commit` → `git push` (GitHub Pages tự cập nhật). Sửa `Code.gs` thì nhắc người dùng: dán đè trong Apps Script → Triển khai → Quản lý triển khai → ✎ → **Phiên bản mới**; thêm cột thì chạy `caiDat()`; trigger mới thì chạy `caiTuDong()`.
 
 ---
 
-## 7. Việc tiếp theo (đã nghiên cứu, xếp theo giá trị cho công tác bồi thường GPMB)
+## 7. Việc tiếp theo
 
-### Ưu tiên 1
-1. ~~**Tiến độ GPMB theo giai đoạn**~~ — **XONG 27/11/2026** (xem mục 3 + Nhật ký làm). Còn có thể làm thêm: hạn riêng từng bước (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`); mở rộng tới 23 giai đoạn như thẻ của Ban nếu cần (chỉ sửa mảng `GD`).
-2. ~~**Tiền bồi thường – hỗ trợ – TĐC & chi trả**~~ — **XONG 27/11/2026**. Ngày chi dùng chung ngày bước “Chi trả”, không thêm cột `ngay_chi`.
-3. ~~**Nhiều mẫu văn bản**~~ — **XONG**: mẫu TB thu hồi giữ nguyên (gắn vào hộ); mẫu khác tạo ra thì **tải về** (1 hộ = .docx, nhiều hộ = zip), không gắn vào hộ.
-4. ~~**QR mã hồ sơ**~~ — **XONG** (in nhãn 3 cột A4, quét camera BarcodeDetector/jsQR hoặc từ ảnh, link `#ho=`).
-5. ~~**Chụp ảnh hiện trạng bằng điện thoại**~~ — **XONG** (giờ chụp = `lastModified` của ảnh, GPS = vị trí máy lúc bấm, ảnh thu ≤1600 px, gộp vào PDF cũ nếu muốn).
-6. ~~**Sao lưu tự động**~~ — **XONG**: `caiTuDong()` → `saoLuu()` mỗi đêm, thư mục “Sao lưu”, giữ `SAO_LUU_GIU`=30.
+### Đã xong (27/11/2026) — chi tiết ở mục 8
+Tiến độ GPMB 7 bước + hạn bàn giao · Kinh phí BT–HT–TĐC & chi trả · Nhiều mẫu văn bản · QR hồ sơ · Chụp ảnh HT bằng điện thoại ·
+Sao lưu tự động · Email báo đề nghị · Xuất DXF · In A3/A4 khung tên · Gộp hình học thật · Nhập GeoJSON/KML · Dùng khi mất sóng (PWA + hàng đợi) ·
+Câu chữ mẫu TB vào cấu hình chung · Phiên 3 ngày · Đọc Sheet 1 lần/yêu cầu. **Đã bỏ: nối Base.vn** (theo yêu cầu).
 
-### Ưu tiên 2
-7. ~~**Báo có đề nghị chờ duyệt** qua email~~ — **XONG**: `propose_` đặt cờ `dn_moi`, trigger `guiBaoDeNghi()` 15 phút gửi 1 thư tới `EMAIL_QT` (trống = chủ script).
-8. ~~**Xuất ngược DXF**~~ — **XONG** (R12/AC1009, POLYLINE kín màu ACI theo chế độ tô, TEXT “tờ/thửa” giữa thửa, ranh).
-9. ~~**In bản đồ A3 có khung tên**~~ — **XONG** (chọn A3/A4 ngang; tỷ lệ ghi “xấp xỉ” tính từ zoom + bề rộng khổ giấy).
-10. ~~**Gộp hình học thật**~~ — **XONG** (polygon-clipping `union`; 2 thửa không liền nhau thì vẫn gộp theo nhãn như cũ). Lưu ý: thửa CAD hở khe vài cm sẽ không hợp được → cần nắn bản vẽ.
-11. ~~**Nhập GeoJSON/KML**~~ — **XONG** (GeoJSON WGS84 hoặc VN2000 m; nhãn lấy `l/label/SoTo+SoThua/name`). DWG: vẫn phải chuyển DXF (ODA File Converter) rồi chạy dxf2bando.py.
-12. **Đọc hồ sơ quét bằng AI** → điền thông tin hộ (nối skill nhận định nhà đất Metro 2 / máy AI offline của Ban).
-13. **Dùng ngoài thực địa khi mất sóng** (PWA: service worker + hàng đợi sửa, gửi khi có mạng).
+### Còn lại
+1. **Đọc hồ sơ quét bằng AI → điền thông tin hộ** (chưa làm: cần máy AI offline của Ban / API có khóa — trang công khai không được chứa khóa).
+   Hướng làm: nút “Đọc hồ sơ” trên dòng hộ gửi PDF tới 1 dịch vụ nội bộ (máy AI offline, Ollama + model đọc ảnh) qua địa chỉ khai trong cấu hình chung → trả JSON {ten, diachi, thua, to_bd, dt, …} → mở form sửa hộ điền sẵn, người dùng kiểm rồi mới lưu.
+   Nối skill nhận định nhà đất Metro 2 để ra luôn Giấy xác nhận pháp lý.
+2. Hạn riêng từng bước GPMB (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`).
+3. Mất sóng: lưu sẵn ảnh nền bản đồ khu dự án (sw.js hiện không lưu tile — mất sóng thì thửa hiện trên nền xám). Cẩn thận dung lượng.
+4. Bản vẽ lớn (> 5 MB): chia `bando.json` theo tờ, nạp tờ đang xem.
+5. Bỏ cột “Chờ duyệt” (`duyet`) — cờ tay, trùng nghĩa với đề nghị chờ duyệt.
 
 ### Kỹ thuật / giới hạn đã biết
-- `TB_FLD` (mục 7) cứng theo câu chữ mẫu TB thu hồi đất chuẩn → nên đưa vào cấu hình chung để mỗi dự án tự khai.
-- ~~Phiên 6 giờ~~ — đã lưu token + hạn vào ScriptProperties (dọn token hết hạn mỗi lần đăng nhập).
-- ~~Sheet lớn đọc nhiều lần~~ — `list_()` nhớ `MEMO_` trong 1 yêu cầu (`rowIndex_` vẫn đọc 1 cột id, nhẹ).
-- `bando.json` lưu Drive 1 file, đọc qua Apps Script (base64 JSON) — bản vẽ > 5 MB sẽ chậm → nén hoặc chia theo tờ.
+- `bando.json` lưu Drive 1 file, đọc qua Apps Script (base64 JSON) — bản vẽ > 5 MB sẽ chậm.
 - Chế độ một máy: dữ liệu chỉ trong 1 trình duyệt (xóa dữ liệu trình duyệt là mất) → nhắc xuất Excel thường xuyên.
 - Ai mở thẳng file Google Sheet sửa được hết, không qua phân quyền → chỉ chia sẻ Sheet cho quản trị.
-- Cột “Chờ duyệt” (`duyet`) là cờ tay, khác với đề nghị chờ duyệt (tab DeNghi) — có thể bỏ cột này.
+- Hàng đợi mất sóng gửi theo thứ tự; máy chủ vẫn kiểm quyền/phạm vi khi gửi — việc bị từ chối thì báo rồi bỏ khỏi hàng đợi.
+  Sửa trùng hộ với người khác lúc mất sóng: bản gửi sau ghi đè (không trộn).
+- Service worker chỉ chạy trên https (GitHub Pages); test chạy http nên không thử được SW, chỉ thử hàng đợi.
+- `sw.js`: đổi hằng `BAN` khi muốn ép mọi máy bỏ bộ nhớ cũ (index.html luôn lấy mạng trước nên thường không cần).
 
 ---
 
@@ -174,3 +171,15 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 - Thanh bên bản đồ: ô khổ giấy (A3/A4) + **⇩ Xuất DXF (AutoCAD)**; ⚙ Cấu hình: Nạp bản vẽ nhận `.geojson`, `.kml`.
 - Test: DXF xuất ra được `dxf2bando.py` đọc lại đủ thửa + ranh; tách rồi gộp 2 nửa thành 1 đa giác; GeoJSON/KML đổi VN2000 đúng diện tích (~98 m²).
 - Không đổi Code.gs.
+
+### 27/11/2026 — Dùng khi mất sóng + câu chữ mẫu TB vào cấu hình (mục 7.13 + kỹ thuật)
+- `sw.js` (index.html mạng trước/đã lưu khi mất mạng; thư viện jsDelivr lưu 1 lần), `manifest.json`, `icon.svg` → “Thêm vào màn hình chính”.
+- `api()`: lỗi mạng với lệnh sửa (`QUEUE_A`) → cất IndexedDB `hang`, trả `{queued}`; `apHang()` áp lên danh sách để xem (dòng có nhãn “⇡ chờ gửi”);
+  `guiHang()` chạy khi sự kiện `online`, khi ping 60 s thành công, hoặc bấm nút **⇡ N chờ gửi** trên thanh đầu. Danh sách đọc lần cuối lưu IndexedDB `dsCache`.
+- `TB_FLD` thay bằng `tbFld()` dựng từ cấu hình chung `tbm_<trường>_a/_b` (mốc chữ trước/sau giá trị; `TBM`, `TBM0`, `reMoc`). ⚙ Cấu hình có mục gập “Câu chữ mẫu thông báo”.
+- Test: `tests/common.py` có `MANG['tat']` giả mất mạng tới Apps Script. 60/60 OK. Không đổi Code.gs.
+
+### Việc người dùng phải làm sau đợt 27/11/2026 (1 lần)
+1. Apps Script: dán đè **Code.gs** mới → Triển khai → Quản lý triển khai → ✎ → **Phiên bản mới**.
+2. Chạy **`caiDat()`** (thêm cột tiến độ + tiền) rồi **`caiTuDong()`** (sao lưu đêm + email đề nghị; cho phép quyền Drive, Gmail).
+3. Quản trị vào trang: ⚙ Cấu hình → đặt **Hạn bàn giao mặt bằng**, nạp **mẫu văn bản khác** nếu cần, kiểm **Câu chữ mẫu thông báo** nếu mẫu TB dự án khác chuẩn.

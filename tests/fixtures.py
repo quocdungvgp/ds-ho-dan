@@ -10,6 +10,7 @@ d.add_paragraph("Diện tích đất dự kiến thu hồi: «DT» m², thuộc 
 d = Document(); d.add_paragraph("PHIẾU CHI TIỀN BỒI THƯỜNG"); d.add_paragraph("Chi cho «HOTEN», thửa «THUA» tờ «TO». Kiểm đếm ngày «NGAY_KD»."); d.add_paragraph("Số tiền: «TONG» đồng (Bằng chữ: «TONG_CHU»)."); d.save(f'{D}/mau_vb.docx')
 d = Document(); p = d.add_paragraph(); p.add_run("Thu hồi đất của "); r = p.add_run("Ông/Bà Nguyễn Văn "); r.bold = True; r = p.add_run("Ann."); r.bold = True
 p = d.add_paragraph(); p.add_run("Diện tích đất dự kiến thu hồi: "); p.add_run("20"); p.add_run(",5 m², thuộc một phần thửa đất số 1, tờ bản đồ số 134."); d.save(f'{D}/tb_that.docx')
+d = Document(); d.add_paragraph("Thu hồi đất của Ông/Bà Nguyễn Văn An."); d.add_paragraph("Phần đất bị thu hồi rộng 99,9 mét vuông."); d.save(f'{D}/tb_khac.docx')
 H = ['STT', 'Họ và tên', 'Địa chỉ thu hồi', 'Phường', 'Khu phố', 'Tổ', 'Số tờ', 'Số thửa', 'Diện tích thu hồi', 'Giải tỏa']
 for name, rows in [('ds.xlsx', [[1, 'Nguyễn Test', '1 Đường A', '19', '4', 2, '134', '3', '12,5', 'một phần'], [2, 'Trần Test', '2 Đường A', '19', '4', 2, '134', '4', 20, 'Toàn phần']]),
                    ('ds2.xlsx', [[1, 'Nguyễn Văn An', '10 Đường A', 19, 4, 1, 134, 1, '21,5', 'một phần'], [2, 'Trần Thị Bích', '12 Đường A', 19, 4, 2, 134, 2, 30, 'toàn phần'], [3, 'Lê Văn Mới', '16 Đường A', 19, 4, 2, 134, 5, 12, 'một phần']])]:

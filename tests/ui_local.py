@@ -59,6 +59,13 @@ async def main():
         x = zipfile.ZipFile(await (await d.value).path()).read('word/document.xml').decode()
         t = re.sub(r'<[^>]+>', '', x)
         ok('Nguyễn Văn An.' in t and '33,5' in t and x.count('<w:b/>') == 2, 'tải TB: tự sửa họ tên + diện tích, giữ chữ đậm')
+        # câu chữ mẫu TB khác chuẩn: khai mốc trong cấu hình → tự sửa được
+        await pg.click('#bCfg'); await pg.click('#fCfg summary'); await pg.fill('#fCfg [name=tbm_dt_a]', 'Phần đất bị thu hồi rộng'); await pg.fill('#fCfg [name=tbm_dt_b]', 'mét vuông'); await pg.click('#fCfg button[value=ok]'); await pg.wait_for_timeout(300)
+        async with pg.expect_file_chooser() as fc: await pg.click('#tMain tbody tr:nth-child(1) [data-a=thay]')
+        await (await fc.value).set_files(f'{FX}/tb_khac.docx'); await pg.wait_for_timeout(800)
+        async with pg.expect_download() as d: await pg.click('#tMain tbody tr:nth-child(1) [data-a=tai]')
+        t = re.sub(r'<[^>]+>', '', zipfile.ZipFile(await (await d.value).path()).read('word/document.xml').decode())
+        ok('rộng 33,5 mét vuông' in t, 'mẫu TB câu chữ khác: khai mốc trong ⚙ Cấu hình → tự sửa diện tích')
         # ảnh hiện trạng PDF
         async with pg.expect_file_chooser() as fc: await pg.click('#tMain tbody tr:nth-child(2) [data-a=kemht]')
         await (await fc.value).set_files(f'{FX}/ht.pdf'); await pg.wait_for_timeout(2500)

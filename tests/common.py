@@ -11,6 +11,7 @@ ROOT = os.path.dirname(HERE)
 NM = os.path.join(HERE, 'node_modules')
 FX = os.path.join(HERE, 'fx')
 API = 'https://script.google.com/macros/s/TEST/exec'
+MANG = {'tat': False}   # test đặt True để giả mất mạng tới Apps Script
 CDN = {  # đường dẫn CDN trong index.html -> file trong node_modules
     'leaflet@1.9.4/dist/leaflet.js': 'leaflet/dist/leaflet.js', 'leaflet@1.9.4/dist/leaflet.css': 'leaflet/dist/leaflet.css',
     'proj4@2.12.1/dist/proj4.js': 'proj4/dist/proj4.js', 'xlsx@0.18.5/dist/xlsx.full.min.js': 'xlsx/dist/xlsx.full.min.js',
@@ -34,6 +35,7 @@ async def route(r):
             if os.path.exists(f): return await r.fulfill(path=f)
             return await r.fulfill(status=404, body='')
         if u.startswith('https://script.google.com/'):
+            if MANG['tat']: return await r.abort('internetdisconnected')   # giả mất sóng
             req = urllib.request.Request('http://localhost:8787', data=r.request.post_data_buffer, method='POST')
             return await r.fulfill(body=urllib.request.urlopen(req).read(), content_type='application/json', headers={'access-control-allow-origin': '*'})
         await r.abort()   # ảnh nền bản đồ, font… không cần

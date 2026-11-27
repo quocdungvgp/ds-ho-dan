@@ -1,0 +1,11 @@
+{
+  "name": "Danh sách hộ dân · Bản đồ dự án",
+  "short_name": "DS hộ dân",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#9b1530",
+  "lang": "vi",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
