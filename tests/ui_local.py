@@ -31,6 +31,13 @@ async def main():
         ok('PA 1,7 tỷ · đã chi 50%' in await pg.inner_text('#tMain tbody tr:nth-child(1)'), 'nhập tiền dạng 1.500.000.000 → PA 1,7 tỷ, đã chi 50%')
         await pg.select_option('#fCt', 'thieu'); await pg.wait_for_timeout(200)
         t = await pg.inner_text('#tMain tbody'); ok('Nguyễn Văn An' in t and 'đã chi đủ' not in t, 'lọc "có PA, chưa chi đủ"'); await pg.click('#bClear')
+        # kiểm tra dữ liệu: đã chi > tổng PA → cảnh báo, thẻ "cần kiểm tra" lọc ra đúng hộ
+        n0 = int((await pg.inner_text('#cards .card >> nth=5')).split()[0])
+        await pg.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await pg.fill('#fm [name=da_chi]', '9.000.000.000'); await pg.click('#fm button[value=ok]'); await pg.wait_for_timeout(400)
+        ok('⚠ Đã chi' in await pg.inner_text('#tMain tbody tr:nth-child(1)') and int((await pg.inner_text('#cards .card >> nth=5')).split()[0]) >= n0, 'kiểm tra dữ liệu: đã chi > tổng PA bị cảnh báo trên dòng hộ')
+        await pg.click('#cards .card >> nth=5'); await pg.wait_for_timeout(300)
+        t = await pg.inner_text('#tMain tbody'); ok('Nguyễn Văn An' in t and t.count('⚠') == len(await pg.locator('#tMain tbody tr').all()), 'thẻ "cần kiểm tra" → chỉ còn hộ có lỗi'); await pg.click('#bClear')
+        await pg.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await pg.fill('#fm [name=da_chi]', '850.000.000'); await pg.click('#fm button[value=ok]'); await pg.wait_for_timeout(400)
         # mẫu TB + tạo TB + xem trước
         async with pg.expect_file_chooser() as fc:
             await pg.click('#bCfg'); await pg.click('#iMau')
@@ -140,6 +147,12 @@ async def main():
             ok(f'{n} thửa' in await pg.inner_text('#mSrc') and 90 < dt < 105, f'nạp bản vẽ {fx}: {n} thửa, đổi WGS84 → VN2000, DT {dt} m²')
         await pg.set_viewport_size({'width': 390, 'height': 800}); await pg.click('#tabDs'); await pg.wait_for_timeout(400)
         ok(await pg.evaluate('document.documentElement.scrollWidth') <= 390, 'điện thoại không tràn ngang')
+        ok(await pg.locator('#bNhan').is_hidden() and await pg.locator('#bQuet').is_visible(), 'điện thoại: nút phụ gom vào ⋯, Quét QR để ngoài')
+        p3 = await R.page(w=390, h=800); await p3.wait_for_timeout(600)
+        ok(await p3.locator('#pTien').evaluate("e=>e.classList.contains('dong')") and await p3.locator('#q').is_visible(), 'mở trên điện thoại: khung kinh phí/tiến độ gập sẵn'); await p3.close()
+        await pg.click('#bMore'); ok(await pg.locator('#bNhan').is_visible(), 'điện thoại: bấm ⋯ hiện thao tác khác')
+        b = pg.locator('#tMain tbody tr:nth-child(1) [data-mo]'); ok(await pg.locator('#tMain tbody tr:nth-child(1) [data-a=sua]').is_hidden(), 'điện thoại: thẻ hộ gọn, ẩn nút')
+        await b.click(); ok(await pg.locator('#tMain tbody tr:nth-child(1) [data-a=sua]').is_visible(), 'điện thoại: bấm "chi tiết" mở thao tác')
         ok(not R.errs, 'không có lỗi JS ' + str(R.errs))
 
 asyncio.run(main())

@@ -36,16 +36,16 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json · sw.js + manifest.js
 |---|---|---|
 | 1. TIỆN ÍCH | `$ esc num f1 fold toast download b64 need() idb` | `need(...ks)` nạp thư viện CDN |
 | 2. CẤU HÌNH | `CFG0`, `CFG` (localStorage `dsho_cfg`), link `?api=` | `saveCfg linkDA NG()` |
-| 3. NGƯỜI DÙNG & QUYỀN | `ME TOKEN RANK has() inScope() canRow() isAdmin()` | |
+| 3. NGƯỜI DÙNG & QUYỀN | `ME TOKEN RANK has() inScope() canRow() isAdmin()`; nhóm dữ liệu `NHOM NHOM_COT nhomOf() canG() canRowG(r,g)` | khớp `NHOM/NHOM_COT` trong Code.gs |
 | 4. DỮ LIỆU | `api() load(nhe) saveRow delRow capMa getTB putTB delTB`, `SHARED` cấu hình chung | `xong(j,viec)` báo + đọc lại |
 | 4b. DỮ LIỆU MẪU | `sample() sampleMap()` | |
-| 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()`, `filtered()`, đề nghị `CHO choOf virtRows choHtml`; **tiến độ GPMB** `GD GD_COL gdIdx gdOf gdNgay gdMatch gdCell renderGd()` | `gdIdx(r)` = bước đã xong (−1…6) |
-| 6. VẼ DANH SÁCH | `render()` (thẻ số, bảng tổ, chip, ô lọc) `tbCell() list() sortRows()` | |
+| 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()` (dùng `THU` tổng DT theo tờ\|thửa, xóa ở `render()`), **kiểm tra dữ liệu `tinhLoi()` → `LOI`**, `filtered()`, đề nghị `CHO choOf virtRows choHtml`; **tiến độ GPMB** `GD GD_COL gdIdx gdOf gdNgay gdMatch gdCell renderGd()` | `gdIdx(r)` = bước đã xong (−1…6) |
+| 6. VẼ DANH SÁCH | `render()` (thẻ số, bảng tổ, chip, ô lọc) `tbCell() list() sortRows()`; phân trang `TRANG nHien xemThem inDu` (in thì vẽ đủ) | ô ít quan trọng có class `ph` (điện thoại ẩn khi thẻ gọn) |
 | 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`tbFld() docFix()`** tự sửa Word theo web (mốc câu chữ `tbm_*` trong cấu hình chung), `dongBo() zipTB hoi(msg,nhãn,mặcĐịnh)` | |
 | 7b. NHIỀU MẪU VĂN BẢN | `truong(r)` bộ trường chung (cả mẫu TB), `TRUONG_DS`, `docSo()` số→chữ, `dien(mau,r)`, `MAUVB loadMauVB getMauVB putMauVB delMauVB moVB taoVB` | thêm trường: sửa `truong()` + `TRUONG_DS` |
 | 8. EXCEL | `COLS` (khóa, tiêu đề, regex nhận cột; `gdn_<bước>` = cột ngày ảo), `colVal()` giá trị xuất, `importXls exportXls` | |
 | 9. BẢN ĐỒ | `initMap CLS(tô màu: tb to gt cl anh gd) drawMap labels pickParcel suggest meas* exportKML`, `HO_IDX hoOf` | |
-| 10. SỰ KIỆN | `route()` (#ds/#bando), click `data-a=…`, hộp sửa hộ, cấu hình | |
+| 10. SỰ KIỆN | `route()` (#ds/#bando), click `data-a=…`, hộp sửa hộ (gửi `chg`+`goc` qua `saveRow(r,viec,chg,goc)`), cấu hình; điện thoại: `#bMore`, `#bLoc demLoc()`, khung gập `.panel.gap` (`dsho_dong`), `[data-mo]` | |
 | 11. ĐĂNG NHẬP… | `topBar showLogin`, người dùng `openUsers userForm`, `duyet drawDuyet openLog` | |
 | 12. BỔ SUNG | sắp xếp cột, chép link, tự đọc lại (`ping` 60 s), đính kèm hàng loạt | |
 | 13. ẢNH HIỆN TRẠNG | `pdfLib getHT attachHT openAnh drawThumbs bigAnh` | |
@@ -78,12 +78,13 @@ Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nh�
 |---|---|---|
 | login | — | trả `token`: Cache 6 giờ + bản chính trong ScriptProperties `tk_<token>`={ten,het} (`PHIEN_GIO`=72), sai 5 lần khóa 15 phút |
 | me, logout, changePw, list, ping, getFile, getMap, getMau | đăng nhập | `list` trả `rows, cho, me, cfg, sheetUrl`; `getFile` chỉ file đang gắn hộ/đề nghị |
-| upsert, delete, uploadTB(kind tb/ht), delTB, delHT | denghi+ (trong phạm vi tổ) | quyền `denghi` → thành đề nghị (`propose_`) |
-| bulk, capMa | sua+ | |
+| upsert, delete, uploadTB(kind tb/ht), delTB, delHT | denghi+ (trong phạm vi tổ, đúng **nhóm dữ liệu**) | quyền `denghi` → thành đề nghị (`propose_`). `upsert` nhận `goc` (giá trị lúc mở form) → ô người khác vừa đổi thì trả `{xungdot:[{k,goc,moi,minh}],by,at}`, `ep:true` = ghi đè |
+| bulk, capMa | sua+ | bulk cần mọi nhóm; capMa cần nhóm hoso |
 | mauDS, getMauVB | đăng nhập | mẫu văn bản khác: ScriptProperties `mau_vb`=[{ten,id}] |
 | replaceAll, approve, reject, users, userSave, userDel, putMap, putMau, putMauVB, delMauVB, putCfg, log | quantri | |
 | withdraw | người gửi | |
 
+**Nhóm dữ liệu** (cột NguoiDung “Được sửa (nhóm)”, trống/* = mọi nhóm): `hoso tb ht tien gd` — `NHOM_COT` gán cột vào nhóm, cột còn lại là `hoso`; thêm/xóa hộ cần `hoso`; đính kèm/gỡ TB cần `tb`, ảnh HT cần `ht`. Kiểm ở `change_`, `uploadTB_`, `bulk`, `capMa` (`nhom_()`).
 Hàm chạy tay/trigger: `caiDat()` (tạo tab, cột), `caiTuDong()` (cài trigger `saoLuu` 1 giờ sáng + `guiBaoDeNghi` 15 phút). `list_()` nhớ trong `MEMO_` suốt 1 yêu cầu, mọi chỗ ghi Sheet đặt `MEMO_ = null`.
 Mọi thay đổi gọi `log_()` → ghi NhatKy + đổi `ver` (trang đang mở tự đọc lại). `onEdit()` làm việc này khi sửa tay trên Sheet.
 Giới hạn Apps Script cần nhớ: 1 lần gọi tối đa ~6 phút; khối dữ liệu gửi lên ~50 MB (trang chặn PDF > 35 MB); CacheService tối đa 6 giờ.
@@ -97,7 +98,7 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **60/60 OK** (27/11/2026). Test DXF cần `pip install ezdxf`. mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **73/73 OK** (27/11/2026). Test DXF cần `pip install ezdxf`. mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy), camera quét QR thật + GPS thật (test dùng nhánh “chọn ảnh”).
 
@@ -122,6 +123,8 @@ Câu chữ mẫu TB vào cấu hình chung · Phiên 3 ngày · Đọc Sheet 1 l
 3. Mất sóng: lưu sẵn ảnh nền bản đồ khu dự án (sw.js hiện không lưu tile — mất sóng thì thửa hiện trên nền xám). Cẩn thận dung lượng.
 4. Bản vẽ lớn (> 5 MB): chia `bando.json` theo tờ, nạp tờ đang xem.
 5. Bỏ cột “Chờ duyệt” (`duyet`) — cờ tay, trùng nghĩa với đề nghị chờ duyệt.
+6. Xuất báo cáo tiến độ ra Word theo mẫu Ban (số liệu tiến độ + kinh phí theo tổ) — nối skill báo cáo tiến độ Metro 2.
+7. Điện thoại: thẻ hộ còn ~250 px/hộ — có thể gộp Tổ, Tờ·Thửa, DT lên 1 dòng.
 
 ### Kỹ thuật / giới hạn đã biết
 - `bando.json` lưu Drive 1 file, đọc qua Apps Script (base64 JSON) — bản vẽ > 5 MB sẽ chậm.
@@ -179,7 +182,15 @@ Câu chữ mẫu TB vào cấu hình chung · Phiên 3 ngày · Đọc Sheet 1 l
 - `TB_FLD` thay bằng `tbFld()` dựng từ cấu hình chung `tbm_<trường>_a/_b` (mốc chữ trước/sau giá trị; `TBM`, `TBM0`, `reMoc`). ⚙ Cấu hình có mục gập “Câu chữ mẫu thông báo”.
 - Test: `tests/common.py` có `MANG['tat']` giả mất mạng tới Apps Script. 60/60 OK. Không đổi Code.gs.
 
+### 27/11/2026 — Chống ghi đè, phân quyền theo nhóm dữ liệu, tốc độ, điện thoại, kiểm tra dữ liệu
+- **Chống ghi đè**: trước đây lưu gửi cả dòng → người lưu sau ghi đè ô người khác vừa sửa. Nay form chỉ gửi ô đổi (`chg`) + giá trị lúc mở (`goc`); máy chủ báo xung đột, trang hỏi “ghi đè / lấy bản mới”. Hàng đợi mất sóng cũng mang `goc` → xung đột thì báo bị từ chối.
+- **Nhóm dữ liệu**: 👥 Người dùng có ô “Được sửa nhóm dữ liệu”. Form khóa ô ngoài nhóm, ẩn nút Xóa/Đính kèm/Thêm hộ tương ứng; máy chủ chặn cả khi gọi thẳng API (đã test). `bulk` nay kiểm cả tổ cũ của hộ.
+- **Tốc độ** (3.000 hộ, máy tính): mở trang 2,5 s → 0,3 s; bỏ lọc 2 s → 0,24 s; phần tử trang 118.000 → ~4.800. Gõ tìm trễ 180 ms mới lọc.
+- **Điện thoại** (≤ 700 px): thanh trên 1 dòng; hero chỉ Quét QR / Thêm hộ / Đọc lại + ⋯; thẻ số 2 cột; 3 khung gập sẵn; ô tìm + “Bộ lọc ▾” ghim khi cuộn; thẻ hộ gọn, bấm “chi tiết · thao tác” mới hiện. Trang dài 14.700 px → ~8.900 px.
+- **Kiểm tra dữ liệu**: thẻ “hộ cần kiểm tra dữ liệu” + dòng ⚠ trên hộ + cột “Cần kiểm tra” khi xuất Excel. Luật: trùng tên + tờ/thửa, thiếu DT, tổng DT thu hồi vượt DT thửa, tờ/thửa không có trên bản vẽ, đã chi > tổng PA, chi tiền khi chưa phê duyệt, bàn giao chưa có ngày chi trả, ngày các bước lùi, có file TB chưa ghi số.
+- `Code.gs` đổi → dán + Phiên bản mới + **`caiDat()`** (thêm cột “Được sửa (nhóm)” tab NguoiDung; người cũ để trống = mọi nhóm như trước).
+
 ### Việc người dùng phải làm sau đợt 27/11/2026 (1 lần)
 1. Apps Script: dán đè **Code.gs** mới → Triển khai → Quản lý triển khai → ✎ → **Phiên bản mới**.
-2. Chạy **`caiDat()`** (thêm cột tiến độ + tiền) rồi **`caiTuDong()`** (sao lưu đêm + email đề nghị; cho phép quyền Drive, Gmail).
-3. Quản trị vào trang: ⚙ Cấu hình → đặt **Hạn bàn giao mặt bằng**, nạp **mẫu văn bản khác** nếu cần, kiểm **Câu chữ mẫu thông báo** nếu mẫu TB dự án khác chuẩn.
+2. Chạy **`caiDat()`** (thêm cột tiến độ + tiền + “Được sửa (nhóm)”) rồi **`caiTuDong()`** (sao lưu đêm + email đề nghị; cho phép quyền Drive, Gmail).
+3. Quản trị: 👥 Người dùng → giao **nhóm dữ liệu** cho từng người (vd kế toán chỉ “Kinh phí, chi trả”). ⚙ Cấu hình → đặt **Hạn bàn giao mặt bằng**, nạp **mẫu văn bản khác** nếu cần, kiểm **Câu chữ mẫu thông báo** nếu mẫu TB dự án khác chuẩn.

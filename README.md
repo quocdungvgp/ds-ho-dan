@@ -33,7 +33,10 @@ Quản trị bấm **👥 Người dùng** → thêm tài khoản: tên đăng n
 | Đề nghị | Như Sửa nhưng thành **đề nghị chờ duyệt** (hiện ⏳ trên dòng hộ, quản trị bấm Duyệt / Từ chối; người gửi Rút được) |
 | Xem | Chỉ xem, lọc, tải, in, bản đồ |
 **Phạm vi tổ**: chọn Tổ 1…4 thì chỉ thao tác hộ của tổ đó (vẫn xem toàn bộ). Muốn ngưng ai: tích **Khóa** (giữ lịch sử) thay vì xóa.
-Máy chủ kiểm quyền ở mọi yêu cầu, sai mật khẩu 5 lần khóa 15 phút, mật khẩu lưu dạng mã hóa có muối, phiên đăng nhập 6 giờ.
+**Được sửa nhóm dữ liệu** (áp cho quyền Sửa và Đề nghị): *Thông tin hộ*, *Thông báo thu hồi*, *Ảnh hiện trạng*, *Kinh phí, chi trả*, *Tiến độ GPMB*. Ví dụ kế toán chỉ tích *Kinh phí, chi trả* → mở ✎ Sửa chỉ gõ được ô tiền, các ô khác mờ, không có nút Xóa/Đính kèm/Thêm hộ. Mặc định *Tất cả*.
+Ai không được giao quyền/nhóm thì không sửa được, kể cả cố gọi thẳng máy chủ — máy chủ kiểm quyền, phạm vi tổ và nhóm dữ liệu ở mọi yêu cầu. Sai mật khẩu 5 lần khóa 15 phút, mật khẩu lưu dạng mã hóa có muối, phiên đăng nhập 3 ngày.
+Lưu ý: ai mở thẳng file Google Sheet thì sửa được hết → chỉ chia sẻ Sheet cho quản trị.
+**Hai người cùng sửa 1 hộ**: sửa khác ô thì giữ cả hai; cùng 1 ô thì trang báo “hộ vừa được X sửa — trùng ô …” cho chọn ghi đè hoặc lấy bản mới nhất, không ghi đè lặng lẽ.
 Mọi thao tác ghi vào tab **NhatKy** (nút 📜 Nhật ký; nút “Lịch sử” trên từng hộ).
 Lưu ý: người mở thẳng file Google Sheet vẫn sửa được mọi thứ — chỉ chia sẻ Sheet cho quản trị.
 
@@ -92,6 +95,12 @@ Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm
 
 ## Câu chữ mẫu thông báo (tự sửa Word theo web)
 ⚙ Cấu hình → mục gập **Câu chữ mẫu thông báo**: khai chữ đứng ngay trước / ngay sau họ tên, diện tích, toàn bộ/một phần, số thửa, số tờ trong mẫu TB của dự án (mặc định theo mẫu TB thu hồi đất chuẩn). Cấu hình chung — quản trị đặt một lần cho cả dự án.
+
+## Kiểm tra dữ liệu
+Thẻ **hộ cần kiểm tra dữ liệu** (bấm để lọc) + dòng ⚠ trên từng hộ: trùng hộ (cùng tên, cùng tờ/thửa), thiếu diện tích, tổng DT thu hồi vượt DT thửa trên bản vẽ, tờ/thửa không có trên bản vẽ, đã chi nhiều hơn tổng phương án, đã chi tiền mà chưa ghi Phê duyệt PA, đã bàn giao mà chưa có ngày chi trả, ngày các bước bị lùi, có file thông báo mà chưa ghi số. Xuất Excel có cột *Cần kiểm tra*.
+
+## Trên điện thoại
+Đầu trang chỉ còn **Quét QR hồ sơ, Thêm hộ, Đọc lại**; việc khác ở **⋯ Thao tác khác**. Các khung Tiến độ, Kinh phí, Thống kê gập sẵn (bấm tiêu đề để mở — trang nhớ lựa chọn). Ô tìm + **Bộ lọc ▾** dính trên đầu khi cuộn. Mỗi hộ hiện gọn; bấm **▸ chi tiết · thao tác** để thấy mã HS, cán bộ, nút Sửa/Chụp ảnh/QR. Danh sách hiện 100 hộ, bấm **Xem thêm** / **Xem hết** (in thì in đủ).
 
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên). Bản có thêm cột thì chạy lại `caiDat()`; lần đầu dùng sao lưu/email thì chạy `caiTuDong()`.
