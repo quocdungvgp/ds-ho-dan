@@ -72,13 +72,14 @@ Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nh�
 
 | action | quyền | ghi chú |
 |---|---|---|
-| login | — | trả `token` (CacheService 6 giờ), sai 5 lần khóa 15 phút |
+| login | — | trả `token`: Cache 6 giờ + bản chính trong ScriptProperties `tk_<token>`={ten,het} (`PHIEN_GIO`=72), sai 5 lần khóa 15 phút |
 | me, logout, changePw, list, ping, getFile, getMap, getMau | đăng nhập | `list` trả `rows, cho, me, cfg, sheetUrl`; `getFile` chỉ file đang gắn hộ/đề nghị |
 | upsert, delete, uploadTB(kind tb/ht), delTB, delHT | denghi+ (trong phạm vi tổ) | quyền `denghi` → thành đề nghị (`propose_`) |
 | bulk, capMa | sua+ | |
 | replaceAll, approve, reject, users, userSave, userDel, putMap, putMau, putCfg, log | quantri | |
 | withdraw | người gửi | |
 
+Hàm chạy tay/trigger: `caiDat()` (tạo tab, cột), `caiTuDong()` (cài trigger `saoLuu` 1 giờ sáng + `guiBaoDeNghi` 15 phút). `list_()` nhớ trong `MEMO_` suốt 1 yêu cầu, mọi chỗ ghi Sheet đặt `MEMO_ = null`.
 Mọi thay đổi gọi `log_()` → ghi NhatKy + đổi `ver` (trang đang mở tự đọc lại). `onEdit()` làm việc này khi sửa tay trên Sheet.
 Giới hạn Apps Script cần nhớ: 1 lần gọi tối đa ~6 phút; khối dữ liệu gửi lên ~50 MB (trang chặn PDF > 35 MB); CacheService tối đa 6 giờ.
 
@@ -91,7 +92,7 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **40/40 OK** (27/11/2026). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **42/42 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy).
 
@@ -109,10 +110,10 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 3. **Nhiều mẫu văn bản** (giấy mời, TB kiểm đếm, biên bản, phiếu chi…) thay vì 1 mẫu TB: lưu `mau/<tên>.docx` trên Drive (`putMau` thêm tên), nút “Tạo văn bản” chọn mẫu, dùng chung trường «HOTEN» «DT» «THUA»… + thêm trường tiền, ngày. Tạo hàng loạt → zip.
 4. **QR mã hồ sơ**: in nhãn bìa hồ sơ (QR = link `#ho=<id>` mở đúng hộ), quét QR bằng camera điện thoại (thư viện qrcode-generator + jsQR). Ban đang dùng “QR hồ sơ / Quét QR”.
 5. **Chụp ảnh hiện trạng thẳng bằng điện thoại**: `<input type=file accept=image/* capture=environment multiple>`, gắn giờ + GPS lên ảnh, gộp thành PDF (jsPDF) rồi dùng luồng `attachHT` sẵn có.
-6. **Sao lưu tự động**: hàm `caiSaoLuu()` tạo trigger hằng ngày `makeCopy` file Sheet vào thư mục “Sao lưu”, giữ 30 bản.
+6. ~~**Sao lưu tự động**~~ — **XONG**: `caiTuDong()` → `saoLuu()` mỗi đêm, thư mục “Sao lưu”, giữ `SAO_LUU_GIU`=30.
 
 ### Ưu tiên 2
-7. **Báo có đề nghị chờ duyệt** qua email quản trị (MailApp trong `propose_`, gom 15 phút/lần bằng trigger).
+7. ~~**Báo có đề nghị chờ duyệt** qua email~~ — **XONG**: `propose_` đặt cờ `dn_moi`, trigger `guiBaoDeNghi()` 15 phút gửi 1 thư tới `EMAIL_QT` (trống = chủ script).
 8. **Xuất ngược DXF** bản vẽ đã tách/gộp/sửa nhãn (viết DXF ASCII: LWPOLYLINE lớp THUA_DAT + TEXT lớp SO_THUA, cộng lại gốc `o`) để về AutoCAD.
 9. **In bản đồ A3 có khung tên** (tên dự án, chú giải, mũi tên Bắc, thước tỉ lệ, ngày in) — hiện chỉ in khung bản đồ.
 10. **Gộp hình học thật** khi gộp thửa kề (turf.js `union`), hiện chỉ gộp theo nhãn.
@@ -122,8 +123,8 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 
 ### Kỹ thuật / giới hạn đã biết
 - `TB_FLD` (mục 7) cứng theo câu chữ mẫu TB thu hồi đất chuẩn → nên đưa vào cấu hình chung để mỗi dự án tự khai.
-- Phiên 6 giờ (giới hạn CacheService) → muốn lâu hơn: lưu token + hạn vào ScriptProperties.
-- Sheet > ~3.000 hộ: `getRow_`/`rowIndex_` đọc cả sheet mỗi lần → gom đọc 1 lần mỗi yêu cầu.
+- ~~Phiên 6 giờ~~ — đã lưu token + hạn vào ScriptProperties (dọn token hết hạn mỗi lần đăng nhập).
+- ~~Sheet lớn đọc nhiều lần~~ — `list_()` nhớ `MEMO_` trong 1 yêu cầu (`rowIndex_` vẫn đọc 1 cột id, nhẹ).
 - `bando.json` lưu Drive 1 file, đọc qua Apps Script (base64 JSON) — bản vẽ > 5 MB sẽ chậm → nén hoặc chia theo tờ.
 - Chế độ một máy: dữ liệu chỉ trong 1 trình duyệt (xóa dữ liệu trình duyệt là mất) → nhắc xuất Excel thường xuyên.
 - Ai mở thẳng file Google Sheet sửa được hết, không qua phân quyền → chỉ chia sẻ Sheet cho quản trị.
@@ -148,3 +149,7 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 - Xuất Excel: thêm cột Tổng PA, Còn phải chi; **dòng TỔNG CỘNG** cuối (ô Họ tên trống nên nhập lại không thành hộ); trang 2 **“Theo tổ”**; định dạng `#,##0`.
 - `Code.gs` `COT` thêm 4 cột → dán Code.gs mới + Phiên bản mới + `caiDat()`.
 - `tests/chay.sh` chạy cả 2 bộ.
+
+### 27/11/2026 — Máy chủ: sao lưu, email đề nghị, phiên dài, đọc Sheet 1 lần (mục 7.6, 7.7 + kỹ thuật)
+- `Code.gs`: hằng `PHIEN_GIO=72 EMAIL_QT SAO_LUU_GIU`; `caiTuDong() saoLuu() guiBaoDeNghi() emailQT_()`; token lưu ScriptProperties; `MEMO_`.
+- **Người dùng phải**: dán Code.gs mới → Phiên bản mới → chạy `caiTuDong()` 1 lần (cho phép quyền Drive + Gmail). `saoLuu` chưa thử được trên máy giả lập (cần Drive thật).

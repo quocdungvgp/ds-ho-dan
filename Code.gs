@@ -10,6 +10,8 @@
  *  4. Triển khai → Tùy chọn triển khai mới → Ứng dụng web · Thực thi: Tôi · Truy cập: Bất kỳ ai → copy URL /exec.
  *  5. Trên trang: ⚙ Cấu hình → dán URL → đăng nhập admin → ĐỔI MẬT KHẨU → thêm người dùng ở nút "👥 Người dùng".
  *  Sửa code: Triển khai → Quản lý triển khai → ✎ → Phiên bản mới (URL giữ nguyên).
+ *  6. (nên làm) Chạy hàm caiTuDong() một lần: sao lưu Sheet mỗi đêm (thư mục "Sao lưu", giữ 30 bản)
+ *     + gửi email cho quản trị khi có đề nghị chờ duyệt (gom 15 phút/lần).
  *
  * QUYỀN (cột "Quyền" trong tab NguoiDung):
  *   quantri  — mọi việc, duyệt đề nghị, quản lý người dùng, nạp bản vẽ / mẫu thông báo
@@ -22,7 +24,9 @@
 const THU_MUC_ID = '';                 // ID thư mục Drive lưu thông báo (trống = thư mục gốc Drive)
 const MK_ADMIN_DAU = 'Doi-mat-khau-ngay-1';   // mật khẩu tạm cho tài khoản admin khi chạy caiDat()
 const TEN_TAB = 'Tổng';
-const PHIEN_GIO = 12;                  // phiên đăng nhập kéo dài bao nhiêu giờ
+const PHIEN_GIO = 72;                  // phiên đăng nhập kéo dài bao nhiêu giờ (lưu ScriptProperties, không bị giới hạn 6 giờ của Cache)
+const EMAIL_QT = '';                   // email nhận báo có đề nghị chờ duyệt (trống = email chủ Apps Script)
+const SAO_LUU_GIU = 30;                // giữ bao nhiêu bản sao lưu Sheet gần nhất
 
 const COT = [
   ['stt', 'STT'], ['ma', 'Mã số hồ sơ'], ['canbo', 'Cán bộ thụ lý'], ['ten', 'Họ và tên'],
@@ -66,7 +70,9 @@ function onEdit() { CacheService.getScriptCache().put('ver', String(Date.now()),
 
 function doGet() { return out_({ ok: true, msg: 'Máy chủ danh sách hộ đang chạy. Trang dùng POST.' }); }
 
+let MEMO_ = null;   // danh sách hộ đọc 1 lần mỗi yêu cầu (Sheet lớn đỡ chậm); ghi gì thì xóa
 function doPost(e) {
+  MEMO_ = null;
   let q;
   try { q = JSON.parse(e.postData.contents); } catch (err) { return out_({ ok: false, error: 'Dữ liệu gửi lên lỗi' }); }
   try {
@@ -84,7 +90,7 @@ function route_(me, q) {
   const A = q.action;
   switch (A) {
     case 'me': return { ok: true, me: pub_(me) };
-    case 'logout': CacheService.getScriptCache().remove('tk_' + q.token); return { ok: true };
+    case 'logout': CacheService.getScriptCache().remove('tk_' + q.token); PropertiesService.getScriptProperties().deleteProperty('tk_' + q.token); return { ok: true };
     case 'changePw': return changePw_(me, q.old, q.pass);
     case 'list': { const rows = list_(); return { ok: true, rows, cho: pending_(me, rows), me: pub_(me), cfg: cfg_(), sheetUrl: me.q === 'quantri' ? SpreadsheetApp.getActive().getUrl() : '' }; }
     case 'ping': return { ok: true, v: CacheService.getScriptCache().get('ver') || '0' };
@@ -140,14 +146,24 @@ function login_(ten, pass) {
   }
   cache.remove(k);
   const token = uid_() + uid_() + uid_();
-  cache.put('tk_' + token, u.ten, PHIEN_GIO * 3600 > 21600 ? 21600 : PHIEN_GIO * 3600);   // CacheService tối đa 6 giờ
+  cache.put('tk_' + token, u.ten, 21600);   // CacheService tối đa 6 giờ → bản chính lưu ScriptProperties kèm hạn
+  const P = PropertiesService.getScriptProperties();
+  P.setProperty('tk_' + token, JSON.stringify({ ten: u.ten, het: Date.now() + PHIEN_GIO * 3600e3 }));
+  const all = P.getProperties(); Object.keys(all).forEach(k => { if (k.indexOf('tk_') === 0) { try { if (JSON.parse(all[k]).het < Date.now()) P.deleteProperty(k); } catch (e) { P.deleteProperty(k); } } });
   tab_('NguoiDung').getRange(u.row, 8).setValue(new Date());
   log_(u, 'đăng nhập', '', '');
   return { ok: true, token, me: pub_(u) };
 }
 function auth_(token) {
   if (!token) return null;
-  const ten = CacheService.getScriptCache().get('tk_' + token); if (!ten) return null;
+  const cache = CacheService.getScriptCache();
+  let ten = cache.get('tk_' + token);
+  if (!ten) {   // hết Cache (6 giờ) → xem bản lưu dài
+    const P = PropertiesService.getScriptProperties(); let t = null;
+    try { t = JSON.parse(P.getProperty('tk_' + token) || 'null'); } catch (e) {}
+    if (!t || t.het < Date.now()) { if (t) P.deleteProperty('tk_' + token); return null; }
+    ten = t.ten; cache.put('tk_' + token, ten, 21600);
+  }
   const u = users_().find(x => x.ten === ten);
   return u && !u.khoa ? u : null;
 }
@@ -198,10 +214,13 @@ function cols_(sh) {
 }
 const val_ = v => v instanceof Date ? Utilities.formatDate(v, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd') : (v === null || v === undefined ? '' : String(v));
 function list_() {
-  const sh = tab_(TEN_TAB), c = cols_(sh), n = sh.getLastRow() - 1; if (n < 1) return [];
-  return sh.getRange(2, 1, n, c._n).getValues().filter(r => r.join('').trim()).map(r => {
-    const o = {}; COT.forEach(([k]) => { o[k] = c[k] === undefined ? '' : val_(r[c[k]]); }); return o;
-  }).filter(o => o.id);
+  if (!MEMO_) {
+    const sh = tab_(TEN_TAB), c = cols_(sh), n = sh.getLastRow() - 1;
+    MEMO_ = n < 1 ? [] : sh.getRange(2, 1, n, c._n).getValues().filter(r => r.join('').trim()).map(r => {
+      const o = {}; COT.forEach(([k]) => { o[k] = c[k] === undefined ? '' : val_(r[c[k]]); }); return o;
+    }).filter(o => o.id);
+  }
+  return MEMO_.map(o => Object.assign({}, o));
 }
 function rowIndex_(id) {
   const sh = tab_(TEN_TAB), c = cols_(sh), n = sh.getLastRow() - 1; if (n < 1 || !id) return -1;
@@ -218,9 +237,10 @@ function upsert_(row, me) {
   const line = at > 0 ? sh.getRange(at, 1, 1, c._n).getValues()[0] : new Array(c._n).fill('');
   COT.forEach(([k]) => { if (c[k] !== undefined && row[k] !== undefined) line[c[k]] = row[k]; });
   if (at > 0) sh.getRange(at, 1, 1, c._n).setValues([line]); else sh.appendRow(line);
-  return row.id;
+  MEMO_ = null; return row.id;
 }
 function replaceAll_(rows, me) {
+  MEMO_ = null;
   const sh = tab_(TEN_TAB), c = cols_(sh);
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, c._n).clearContent();
   if (!rows.length) return;
@@ -253,7 +273,7 @@ function apply_(me, loai, hoId, d) {
     if (loai === 'sua') { const cu = getRow_(hoId); if (!cu) throw new Error('Hộ đã bị xóa'); d = Object.assign(cu, d); }
     upsert_(d, me); log_(me, loai === 'them' ? 'thêm hộ' : 'sửa hộ', d.id, ct);
   } else if (loai === 'xoa') {
-    const at = rowIndex_(hoId); if (at > 0) tab_(TEN_TAB).deleteRow(at);
+    const at = rowIndex_(hoId); if (at > 0) tab_(TEN_TAB).deleteRow(at); MEMO_ = null;
     log_(me, 'xóa hộ', hoId, d.lydo || '');
   } else if (loai === 'kem' || loai === 'kemht') {
     const [fF, fT] = loai === 'kem' ? ['tb_file', 'tb_ten'] : ['ht_file', 'ht_ten'];
@@ -296,6 +316,7 @@ function propose_(me, loai, hoId, data) {
   }
   const id = uid_();
   tab_('DeNghi').appendRow([id, loai, hoId, JSON.stringify(data), me.ten, new Date(), 'cho', '', '', data.lydo || '']);
+  PropertiesService.getScriptProperties().setProperty('dn_moi', '1');   // guiBaoDeNghi() gom gửi email
   log_(me, 'gửi đề nghị ' + (LOAI_TEN[loai] || loai), hoId, JSON.stringify(data).slice(0, 300));
   return id;
 }
@@ -343,7 +364,7 @@ function capMa_(me, duoi) {
       sh.getRange(i + 2, c.ma + 1).setValue(String(mx).padStart(3, '0') + '/P' + String(c.phuong === undefined ? '' : r[c.phuong]).trim() + '/' + duoi + '.' + ((to.match(/\d+/) || [''])[0]));
     }
   });
-  if (k) log_(me, 'cấp mã hồ sơ', '', k + ' hộ');
+  if (k) { MEMO_ = null; log_(me, 'cấp mã hồ sơ', '', k + ' hộ'); }
   return k;
 }
 function nhatKy_(hoId) {
@@ -360,4 +381,35 @@ function saveFile_(name, blob) { const f = file_(name); if (f) f.setTrashed(true
 function fileOk_(id) {
   if (list_().some(r => r.tb_file === id || r.ht_file === id) || dnRows_().some(d => d.st === 'cho' && d.data.fileId === id)) return id;
   throw new Error('File không thuộc danh sách này');
+}
+
+/* ================= TỰ ĐỘNG: sao lưu + báo đề nghị =================
+   Chạy caiTuDong() MỘT lần (trong trình sửa Apps Script, cho phép quyền). Chạy lại không sinh trùng. */
+function caiTuDong() {
+  ScriptApp.getProjectTriggers().forEach(t => { if (['saoLuu', 'guiBaoDeNghi'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('saoLuu').timeBased().everyDays(1).atHour(1).create();
+  ScriptApp.newTrigger('guiBaoDeNghi').timeBased().everyMinutes(15).create();
+  saoLuu();
+  Logger.log('Đã cài: sao lưu 1 giờ sáng mỗi ngày (giữ ' + SAO_LUU_GIU + ' bản) + báo email đề nghị mỗi 15 phút → ' + emailQT_());
+}
+function thuMucSaoLuu_() { const it = folder_().getFoldersByName('Sao lưu'); return it.hasNext() ? it.next() : folder_().createFolder('Sao lưu'); }
+/* chép nguyên file Sheet vào thư mục "Sao lưu", xóa bản cũ quá SAO_LUU_GIU */
+function saoLuu() {
+  const ss = SpreadsheetApp.getActive(), dir = thuMucSaoLuu_();
+  DriveApp.getFileById(ss.getId()).makeCopy(ss.getName() + ' — sao lưu ' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd HH:mm'), dir);
+  const fs = []; const it = dir.getFiles(); while (it.hasNext()) fs.push(it.next());
+  fs.sort((a, b) => b.getDateCreated() - a.getDateCreated()).slice(SAO_LUU_GIU).forEach(f => f.setTrashed(true));
+}
+function emailQT_() { return EMAIL_QT || Session.getEffectiveUser().getEmail(); }
+/* trigger 15 phút: có đề nghị mới kể từ lần gửi trước → gửi 1 email liệt kê mọi đề nghị đang chờ */
+function guiBaoDeNghi() {
+  const P = PropertiesService.getScriptProperties(); if (P.getProperty('dn_moi') !== '1') return 0;
+  P.setProperty('dn_moi', '0');
+  const cho = dnRows_().filter(d => d.st === 'cho'); if (!cho.length) return 0;
+  const by = {}; list_().forEach(r => { by[r.id] = r; });
+  const dong = cho.map(d => '- ' + d.at + ' · ' + d.by + ': ' + (LOAI_TEN[d.loai] || d.loai) + ' — ' + ((by[d.hoId] || d.data).ten || d.hoId));
+  const ten = cfg_().duAn || SpreadsheetApp.getActive().getName();
+  MailApp.sendEmail(emailQT_(), '[' + ten + '] ' + cho.length + ' đề nghị chờ duyệt',
+    'Có ' + cho.length + ' đề nghị đang chờ quản trị duyệt:\n\n' + dong.join('\n') + '\n\nMở trang danh sách hộ → nút ✔ Duyệt để xử lý.');
+  return cho.length;
 }

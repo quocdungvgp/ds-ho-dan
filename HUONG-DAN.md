@@ -63,6 +63,9 @@ Khung **Kinh phí…**: tổng kinh phí phương án, đã chi, còn phải chi
 - **Xuất Excel** có dòng TỔNG CỘNG và trang *Theo tổ*. Nhập Excel nhận các cột *Tiền bồi thường, Tiền hỗ trợ, Tiền tái định cư, Đã chi trả*.
 - Sheet cũ: dán Code.gs mới rồi chạy `caiDat()` (thêm 4 cột tiền).
 
+## Sao lưu & báo đề nghị qua email (quản trị, 1 lần)
+Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm 1 giờ sáng chép file Sheet vào thư mục *Sao lưu* (giữ 30 bản gần nhất); có đề nghị chờ duyệt thì 15 phút gom gửi 1 email cho quản trị (đổi người nhận ở `EMAIL_QT` đầu Code.gs). Phiên đăng nhập nay giữ 3 ngày (`PHIEN_GIO`).
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 

@@ -26,7 +26,7 @@ const mkFile = (blob) => { const id = 'f' + crypto.randomBytes(6).toString('hex'
 const Blob = (bytes, mime, name) => { const b = { bytes: Buffer.from(bytes), name, getBytes: () => [...b.bytes].map(x => x > 127 ? x - 256 : x), getDataAsString: () => b.bytes.toString('utf8'), setName(n) { b.name = n; return b; } }; return b; };
 const folder = { createFile(a, content, mime) { const blob = typeof a === 'string' ? Blob(Buffer.from(content), mime, a) : a; return mkFile(blob); },
   getFilesByName(n) { const l = Object.values(files).filter(f => !f.trashed && f.blob.name === n); let i = 0; return { hasNext: () => i < l.length, next: () => l[i++] }; } };
-const cache = {}, props = {};
+const cache = {}, props = {}, mails = [];
 const toBuf = x => typeof x === 'string' ? Buffer.from(x, 'utf8') : Buffer.from(x.map(v => v & 255));
 const G = {
   SpreadsheetApp: { getActive: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = Sheet(n)), getUrl: () => 'https://docs.google.com/spreadsheets/d/TEST' }) },
@@ -40,13 +40,14 @@ const G = {
     formatDate: (d, tz, f) => d.toISOString().slice(0, 16).replace('T', ' ')
   },
   CacheService: { getScriptCache: () => ({ get: k => cache[k] ?? null, put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; } }) },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; }, getProperties: () => ({ ...props }) }) },
+  MailApp: { sendEmail: (to, sub, body) => mails.push({ to, sub, body }) }, Session: { getEffectiveUser: () => ({ getEmail: () => 'qt@test' }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   ContentService: { MimeType: { JSON: 'json' }, createTextOutput: t => ({ t, setMimeType() { return this; } }) },
   Logger: { log: console.log }, console
 };
 vm.createContext(G);
-vm.runInContext(fs.readFileSync(process.argv[2] || __dirname + '/../Code.gs', 'utf8') + '\n;this.doPost=doPost;this.caiDat=caiDat;', G);
+vm.runInContext(fs.readFileSync(process.argv[2] || __dirname + '/../Code.gs', 'utf8') + '\n;this.doPost=doPost;this.caiDat=caiDat;this.guiBaoDeNghi=guiBaoDeNghi;', G);
 G.caiDat();
 // nạp vài hộ mẫu
 const rows = [['1', '', '', 'Nguyễn Văn An', '10 Đường A', '19', '4', 'Tổ 1', '134', '1', '20,5', 'Một phần'],
@@ -57,6 +58,9 @@ G.caiDat();
 http.createServer((req, res) => {
   let b = ''; req.on('data', c => b += c); req.on('end', () => {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    // lối riêng cho test: /__het (xóa Cache = giả hết 6 giờ), /__mail (chạy trigger báo đề nghị, trả thư đã gửi)
+    if (req.url === '/__het') { for (const k in cache) delete cache[k]; return res.end('{}'); }
+    if (req.url === '/__mail') { G.guiBaoDeNghi(); return res.end(JSON.stringify(mails)); }
     if (req.method !== 'POST') return res.end('{}');
     const o = G.doPost({ postData: { contents: b } }); res.setHeader('content-type', 'application/json'); res.end(o.t);
   });

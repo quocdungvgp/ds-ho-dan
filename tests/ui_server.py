@@ -1,6 +1,6 @@
 """Chạy thử chế độ nối Google Sheet: Code.gs chạy trên máy chủ giả lập (node tests/mock-gas.js — chạy lại mỗi lần test
 để dữ liệu sạch). Tài khoản admin / Doi-mat-khau-ngay-1 (MK_ADMIN_DAU). Chạy: python3 tests/ui_server.py"""
-import asyncio, urllib.parse
+import asyncio, urllib.parse, urllib.request, json
 from common import Run, FX, API, login, ok
 
 LINK = 'http://local/index.html?api=' + urllib.parse.quote(API)
@@ -36,6 +36,8 @@ async def main():
         await (await fc.value).set_files(f'{FX}/mau.docx'); await t2.wait_for_timeout(1500)
         await ad.click('#bReload'); await ad.wait_for_timeout(1000)
         ok(await ad.inner_text('#nDuyet') == '2', 'admin thấy 2 đề nghị')
+        m = json.loads(urllib.request.urlopen('http://localhost:8787/__mail').read())
+        ok(len(m) == 1 and '2 đề nghị' in m[0]['sub'] and 'to2' in m[0]['body'] and json.loads(urllib.request.urlopen('http://localhost:8787/__mail').read()) == m, 'email báo đề nghị: gom 1 thư, không gửi lặp')
         await ad.click('#bDuyet'); await ad.click('#dAll'); await ad.click('dialog[open] button[value=ok]'); await ad.wait_for_timeout(1500); await ad.click('#dDong')
         row = await ad.inner_text('#tMain tbody tr:nth-child(2)')
         ok('45,5' in row and 'Xem trước' in row, 'duyệt toàn bộ: sửa + đính kèm có hiệu lực')
@@ -59,6 +61,8 @@ async def main():
         await ad.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await ad.fill('#fm [name=gdn_ct]', '2026-11-25'); await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1200)
         await xm.click('#bReload'); await xm.wait_for_timeout(1000)
         ok('Chi trả · 25/11/2026' in await xm.inner_text('#tMain tbody tr:nth-child(1)') and '31/03/2027' in await xm.inner_text('#gdHan'), 'tiến độ GPMB lưu Sheet, hạn bàn giao áp cho mọi người')
+        urllib.request.urlopen('http://localhost:8787/__het'); await xm.click('#bReload'); await xm.wait_for_timeout(1000)
+        ok(not await xm.evaluate("document.querySelector('#dLogin').open") and await xm.locator('#tMain tbody tr').count() >= 3, 'phiên đăng nhập sống qua mốc 6 giờ của Cache')
         await ad.click('#bLog'); await ad.wait_for_timeout(800); ok('duyệt' in await ad.inner_text('#tLog'), 'nhật ký ghi thao tác')
         ok(not R.errs, 'không có lỗi JS ' + str(R.errs))
 
