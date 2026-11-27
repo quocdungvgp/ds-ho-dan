@@ -55,12 +55,13 @@ Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nh�
 
 ## 3. Dữ liệu (Sheet tab "Tổng") — mảng `COT` trong Code.gs
 
-`stt ma canbo ten diachi phuong kp to(Tổ NVBT) to_bd(số tờ) thua(“5, 6” nhiều thửa) dt giaitoa(Toàn phần|Một phần) tb_so tb_ngay tb_file tb_ten anh ht(link) ht_file ht_ten gd gd_ngay duyet ghichu by at id`
+`stt ma canbo ten diachi phuong kp to(Tổ NVBT) to_bd(số tờ) thua(“5, 6” nhiều thửa) dt giaitoa(Toàn phần|Một phần) tb_so tb_ngay tb_file tb_ten anh ht(link) ht_file ht_ten tien_bt tien_ht tien_tdc da_chi gd gd_ngay duyet ghichu by at id`
 - Thêm cột: thêm vào `COT` (Code.gs) + `COLS` (index.html, nếu nhập Excel) + form `#fm` + chỗ hiển thị; chạy lại `caiDat()` trên Sheet.
 - Khóa thửa: `"tờ/thửa"` (`keyThua`) — ghép hộ ↔ bando.json (`thua[].l`).
 - Mã hồ sơ: `###/P{phường}/{đuôi}.{số tổ}`, máy chủ cấp (`capMa_`), cấp rồi không đổi.
 - **Tiến độ GPMB**: `gd` = nhãn bước đã xong gần nhất (“Chi trả”; đọc được cả số 1–7 hoặc chữ gần đúng qua regex trong `GD`), `gd_ngay` = JSON `{kd,pl,pa,ck,pd,ct,bg: "yyyy-mm-dd"}`.
   Bước thật = max(`gd`, bước cao nhất có ngày) — `gdIdx()`. Lưu lại thì trang ghi `gd` theo bước thật. Thêm/bớt/đổi tên bước: sửa mảng `GD` (+ `GD_COL` đủ `GD.length+1` màu).
+- **Kinh phí**: `tien_bt tien_ht tien_tdc da_chi` lưu số đồng nguyên (chuỗi). `tien()` đọc được “1.500.000.000”, “1,5e9” không; `tongPA() ctOf()`; ngày chi trả = `gd_ngay.ct` (không có cột riêng). Lọc `st.ct`: chua/co/thieu/du.
   Bộ lọc `st.gd`: `e<i>` đang ở bước i (`e-1` chưa bắt đầu), `c<i>` chưa xong bước i, `x<i>` đã xong. Hạn bàn giao: `CFG.hanBG` (trong `SHARED`).
 
 **bando.json**: `{v, o:[x0,y0], thua:[{id, l:"tờ/thửa", v:[[x,y]…] (m, đã trừ o), dt?}], lop:{ranh:[[[x,y]…]]}}`
@@ -90,7 +91,7 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **36/36 OK** (27/11/2026: ui_local 21, ui_server 15).
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **40/40 OK** (27/11/2026). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy).
 
@@ -104,7 +105,7 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 
 ### Ưu tiên 1
 1. ~~**Tiến độ GPMB theo giai đoạn**~~ — **XONG 27/11/2026** (xem mục 3 + Nhật ký làm). Còn có thể làm thêm: hạn riêng từng bước (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`); mở rộng tới 23 giai đoạn như thẻ của Ban nếu cần (chỉ sửa mảng `GD`).
-2. **Tiền bồi thường – hỗ trợ – TĐC & chi trả**: cột `tien_bt tien_ht tien_tdc da_chi ngay_chi`; bảng tổng theo tổ; xuất Excel có tổng.
+2. ~~**Tiền bồi thường – hỗ trợ – TĐC & chi trả**~~ — **XONG 27/11/2026**. Ngày chi dùng chung ngày bước “Chi trả”, không thêm cột `ngay_chi`.
 3. **Nhiều mẫu văn bản** (giấy mời, TB kiểm đếm, biên bản, phiếu chi…) thay vì 1 mẫu TB: lưu `mau/<tên>.docx` trên Drive (`putMau` thêm tên), nút “Tạo văn bản” chọn mẫu, dùng chung trường «HOTEN» «DT» «THUA»… + thêm trường tiền, ngày. Tạo hàng loạt → zip.
 4. **QR mã hồ sơ**: in nhãn bìa hồ sơ (QR = link `#ho=<id>` mở đúng hộ), quét QR bằng camera điện thoại (thư viện qrcode-generator + jsQR). Ban đang dùng “QR hồ sơ / Quét QR”.
 5. **Chụp ảnh hiện trạng thẳng bằng điện thoại**: `<input type=file accept=image/* capture=environment multiple>`, gắn giờ + GPS lên ảnh, gộp thành PDF (jsPDF) rồi dùng luồng `attachHT` sẵn có.
@@ -140,3 +141,10 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
   Regex cột Phường đổi `/phuong/` → `/^phuong|^p$/` (tránh ăn nhầm cột “Ngày lập phương án”).
 - `Code.gs`: thêm `gd`, `gd_ngay` vào `COT` → **người dùng phải dán Code.gs mới + Phiên bản mới + chạy `caiDat()`** (Sheet cũ chưa có 2 cột thì sửa tiến độ bị bỏ qua im lặng).
 - Tests: thêm `fx/ds_gd.xlsx`, 6 bước ở ui_local, 1 bước ở ui_server → 36/36 OK.
+
+### 27/11/2026 — Kinh phí BT–HT–TĐC & chi trả (mục 7.2)
+- Khung `#pTien`: 4 thẻ (tổng PA, đã chi, còn phải chi, hộ chưa có số tiền) + bảng theo tổ (`renderTien`). Dòng hộ: “PA 1,7 tỷ · đã chi 50%” (`tienCell`), khung thông tin thửa trên bản đồ cũng có.
+- Form sửa hộ 4 ô tiền (hiện có dấu chấm nghìn, lưu số nguyên). Ô lọc `#fCt`.
+- Xuất Excel: thêm cột Tổng PA, Còn phải chi; **dòng TỔNG CỘNG** cuối (ô Họ tên trống nên nhập lại không thành hộ); trang 2 **“Theo tổ”**; định dạng `#,##0`.
+- `Code.gs` `COT` thêm 4 cột → dán Code.gs mới + Phiên bản mới + `caiDat()`.
+- `tests/chay.sh` chạy cả 2 bộ.

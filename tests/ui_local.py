@@ -24,6 +24,13 @@ async def main():
         await b.click(); await pg.wait_for_timeout(300)
         ok(await pg.inner_text('#cnt') == n + ' hộ' and await pg.input_value('#fGd') == 'c5', 'bấm "còn … hộ chưa xong" → lọc đúng số hộ')
         await pg.click('#bClear')
+        # kinh phí BT-HT-TĐC
+        ok(await pg.locator('#tienCards .card').count() == 4 and 'Tổng cộng' in await pg.inner_text('#tTien'), 'kinh phí: thẻ số + bảng theo tổ')
+        await pg.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await pg.fill('#fm [name=tien_bt]', '1.500.000.000'); await pg.fill('#fm [name=tien_ht]', '200.000.000'); await pg.fill('#fm [name=tien_tdc]', ''); await pg.fill('#fm [name=da_chi]', '850.000.000')
+        await pg.click('#fm button[value=ok]'); await pg.wait_for_timeout(400)
+        ok('PA 1,7 tỷ · đã chi 50%' in await pg.inner_text('#tMain tbody tr:nth-child(1)'), 'nhập tiền dạng 1.500.000.000 → PA 1,7 tỷ, đã chi 50%')
+        await pg.select_option('#fCt', 'thieu'); await pg.wait_for_timeout(200)
+        t = await pg.inner_text('#tMain tbody'); ok('Nguyễn Văn An' in t and 'đã chi đủ' not in t, 'lọc "có PA, chưa chi đủ"'); await pg.click('#bClear')
         # mẫu TB + tạo TB + xem trước
         async with pg.expect_file_chooser() as fc:
             await pg.click('#bCfg'); await pg.click('#iMau')
@@ -50,6 +57,8 @@ async def main():
         async with pg.expect_download() as d: await pg.click('#bXls')
         xp = '/tmp/_xuat.xlsx'; await (await d.value).save_as(xp); ws = openpyxl.load_workbook(xp).active; hd = [c.value for c in ws[1]]; r1 = dict(zip(hd, [c.value for c in ws[2]]))
         ok(r1.get('Tiến độ GPMB (bước đã xong)') == 'Phê duyệt PA' and r1.get('Ngày Kiểm đếm') == '01/09/2026', 'xuất Excel (có cột tiến độ + ngày từng bước)')
+        wb = openpyxl.load_workbook(xp); last = [c.value for c in wb['Tổng'][wb['Tổng'].max_row]]; tt = list(wb['Theo tổ'].values)
+        ok(str(last[0]).startswith('TỔNG CỘNG') and r1.get('Tổng PA (đ)') == 1700000000 and tt[-1][0] == 'TỔNG CỘNG' and tt[-1][9] == sum(x[9] for x in tt[1:-1]), 'xuất Excel: dòng tổng + trang "Theo tổ" cộng đúng')
         async with pg.expect_file_chooser() as fc:
             await pg.click('#bCfg'); await pg.click('#iXls')
         await (await fc.value).set_files(f'{FX}/ds.xlsx'); await pg.wait_for_timeout(800)

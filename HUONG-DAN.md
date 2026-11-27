@@ -56,6 +56,13 @@ Khung **Tiến độ giải phóng mặt bằng** (dưới các thẻ số): 7 b
 - Excel: cột *Tiến độ GPMB* (ghi chữ hoặc số 1–7) và *Ngày Kiểm đếm*, *Ngày Chi trả*… (dd/mm/yyyy). Xuất Excel có đủ các cột này.
 - Sheet cũ: dán Code.gs mới (Phiên bản mới) rồi chạy lại `caiDat()` để thêm 2 cột *Tiến độ GPMB*, *Ngày các bước GPMB* — chưa chạy thì sửa tiến độ không lưu được.
 
+## Kinh phí bồi thường, hỗ trợ, tái định cư & chi trả
+Khung **Kinh phí…**: tổng kinh phí phương án, đã chi, còn phải chi, số hộ chưa có số tiền; bảng theo tổ (bồi thường, hỗ trợ, TĐC, tổng, đã chi, còn phải chi, tỷ lệ). Bấm số để lọc hộ.
+- Nhập ở **✎ Sửa**: *Tiền bồi thường, hỗ trợ, tái định cư, Đã chi trả* (gõ 1.500.000.000 hay 1500000000 đều được). Ngày chi trả ghi ở ô *6. Chi trả* phần tiến độ.
+- Ô lọc **Mọi tình trạng chi trả**: chưa có số tiền PA / có PA / chưa chi đủ / đã chi đủ.
+- **Xuất Excel** có dòng TỔNG CỘNG và trang *Theo tổ*. Nhập Excel nhận các cột *Tiền bồi thường, Tiền hỗ trợ, Tiền tái định cư, Đã chi trả*.
+- Sheet cũ: dán Code.gs mới rồi chạy `caiDat()` (thêm 4 cột tiền).
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 

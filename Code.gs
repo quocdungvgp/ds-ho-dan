@@ -31,6 +31,7 @@ const COT = [
   ['tb_so', 'Số thông báo'], ['tb_ngay', 'Ngày thông báo'], ['tb_file', 'File thông báo (Drive ID)'],
   ['tb_ten', 'Tên file thông báo'], ['anh', 'Số ảnh hiện trạng'], ['ht', 'Link hồ sơ hiện trạng'],
   ['ht_file', 'File ảnh hiện trạng (Drive ID)'], ['ht_ten', 'Tên file ảnh hiện trạng'],
+  ['tien_bt', 'Tiền bồi thường (đ)'], ['tien_ht', 'Tiền hỗ trợ (đ)'], ['tien_tdc', 'Tiền tái định cư (đ)'], ['da_chi', 'Đã chi trả (đ)'],
   ['gd', 'Tiến độ GPMB (bước đã xong)'], ['gd_ngay', 'Ngày các bước GPMB (JSON)'],
   ['duyet', 'Chờ duyệt'], ['ghichu', 'Ghi chú'], ['by', 'Người sửa cuối'], ['at', 'Lúc sửa cuối'], ['id', 'id']
 ];

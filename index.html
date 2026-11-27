@@ -180,6 +180,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <div class="gdbar" id="gdBar"></div>
     <div class="gdsteps" id="gdSteps"></div>
   </section>
+  <section class="panel" id="pTien">
+    <h2>Kinh phí bồi thường, hỗ trợ, tái định cư &amp; chi trả <em>đơn vị: đồng · bấm số để xem hộ</em></h2>
+    <div class="cards" id="tienCards" style="margin:4px 0 10px"></div>
+    <div class="scroll"><table id="tTien"></table></div>
+  </section>
   <section class="panel">
     <h2>Thống kê thông báo thu hồi đất theo Tổ NVBT <em>bấm số để xem danh sách hộ</em></h2>
     <div class="scroll"><table id="tTo"></table></div>
@@ -199,6 +204,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <select id="fP"></select><select id="fKp"></select><select id="fTbd"></select>
       <select id="fGt"><option value="">Toàn phần + một phần</option><option>Toàn phần</option><option>Một phần</option><option value="none">Chưa đánh dấu</option></select>
       <select id="fGd"></select>
+      <select id="fCt"><option value="">Mọi tình trạng chi trả</option><option value="chua">Chưa có số tiền phương án</option><option value="co">Đã có phương án</option><option value="thieu">Có PA, chưa chi đủ</option><option value="du">Đã chi đủ</option></select>
       <button class="btn" id="bClear">Bỏ lọc</button>
     </div>
   </section>
@@ -259,6 +265,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
   <div><label>Số thông báo</label><input name="tb_so"></div>
   <div><label>Ngày thông báo</label><input name="tb_ngay" type="date"></div>
   <div class="full"><label>Link hồ sơ hiện trạng (Google Drive)</label><input name="ht" placeholder="https://drive.google.com/…"></div>
+  <div><label>Tiền bồi thường (đ)</label><input name="tien_bt" inputmode="numeric"></div>
+  <div><label>Tiền hỗ trợ (đ)</label><input name="tien_ht" inputmode="numeric"></div>
+  <div><label>Tiền tái định cư (đ)</label><input name="tien_tdc" inputmode="numeric"></div>
+  <div><label>Đã chi trả (đ) <span class="note">ngày chi: ô “6. Chi trả” bên dưới</span></label><input name="da_chi" inputmode="numeric"></div>
   <div><label>Tiến độ GPMB — bước đã xong</label><select name="gd" id="fmGd"></select></div>
   <div class="full"><label>Ngày xong từng bước <span class="note">(ghi ngày bước nào là tính đã xong bước đó)</span></label><div class="gdgrid" id="fmGdN"></div></div>
   <div><label>Trạng thái</label><select name="duyet"><option value="">Đã duyệt</option><option value="1">Chờ duyệt</option></select></div>
@@ -480,8 +490,9 @@ function sample(){
   const cb=["Anh Hào","Tiến Thành","Văn Hải","Thu Trang","Minh Quân",""];
   const gc=["GCN QSDĐ QSHNƠ và TSKGLVĐ","Giấy phép mua bán chuyển dịch nhà cửa","Bổ sung HS pháp lý sau","",""];
   return ho.map((t,i)=>{const to="Tổ "+(Math.floor(i/6)+1),dt=i===10?'':+(6+((i*37)%60)+(i%3)*.4).toFixed(1),tb=i%9!==4;
-    return{id:"m"+i,stt:i+1,ma:'',canbo:cb[i%6],ten:t,ghichu:gc[i%5],diachi:(40+i*2)+(i%5?"":"A")+" Xô Viết Nghệ Tĩnh",phuong:"19",kp:String(i%3+3),to,to_bd:i<12?"134":"135",thua:String(i%12+1),dt,giaitoa:i%4?"Một phần":"Toàn phần",tb_so:tb?(310+i)+"/TB-UBND":"",tb_ngay:tb?"2026-11-"+String(i%20+1).padStart(2,'0'):"",tb_file:'',tb_ten:'',duyet:i===7?"1":"",anh:i%4?String(10+i):"",ht:'',by:'',at:'',...gdMau(i)}});
+    return{id:"m"+i,stt:i+1,ma:'',canbo:cb[i%6],ten:t,ghichu:gc[i%5],diachi:(40+i*2)+(i%5?"":"A")+" Xô Viết Nghệ Tĩnh",phuong:"19",kp:String(i%3+3),to,to_bd:i<12?"134":"135",thua:String(i%12+1),dt,giaitoa:i%4?"Một phần":"Toàn phần",tb_so:tb?(310+i)+"/TB-UBND":"",tb_ngay:tb?"2026-11-"+String(i%20+1).padStart(2,'0'):"",tb_file:'',tb_ten:'',duyet:i===7?"1":"",anh:i%4?String(10+i):"",ht:'',by:'',at:'',...gdMau(i),...tienMau(i)}});
 }
+function tienMau(i){if(i%6===5)return{};const bt=Math.round((300+((i*137)%900))*1e6/1e5)*1e5,ht=Math.round(bt*.22/1e5)*1e5,tdc=i%4===0?1.2e9:0,t=bt+ht+tdc,g=(i*5)%(GD.length+1)-1;return{tien_bt:String(bt),tien_ht:String(ht),tien_tdc:tdc?String(tdc):'',da_chi:g>=5?String(t):g===4&&i%2?String(Math.round(t/2)):''}}
 function gdMau(i){const g=(i*5)%(GD.length+1)-1,n={};for(let j=0;j<=g;j++)n[GD[j][0]]=new Date(Date.UTC(2026,7,1+j*14+i%5)).toISOString().slice(0,10);return{gd:g>=0?GD[g][1]:'',gd_ngay:g>=0?JSON.stringify(n):''}}
 /* bản vẽ mẫu: 2 dãy thửa dọc đường, tọa độ VN2000 (m) trừ gốc o */
 function sampleMap(){
@@ -495,7 +506,7 @@ function sampleMap(){
 /* ================================================================
    5. LỌC & SỐ LIỆU
    ================================================================ */
-const st={view:'ho',tb:'all',q:'',to:'',cb:'',dt:'',cl:'',anh:'',p:'',kp:'',tbd:'',gt:'',gd:''};
+const st={view:'ho',tb:'all',q:'',to:'',cb:'',dt:'',cl:'',anh:'',p:'',kp:'',tbd:'',gt:'',gd:'',ct:''};
 /* TIẾN ĐỘ GPMB — cột gd = bước đã xong gần nhất (nhãn chữ), gd_ngay = JSON {mã bước:'yyyy-mm-dd'}.
    Có ngày ở bước nào là tính đã xong bước đó (lấy bước cao nhất giữa gd và các ngày).
    Bộ lọc st.gd: 'e<i>' đang ở bước i (−1 = chưa bắt đầu) · 'c<i>' chưa xong bước i · 'x<i>' đã xong bước i */
@@ -516,6 +527,24 @@ const gdCell=r=>{const i=gdIdx(r),n=gdNgay(r),d=i>=0&&n[GD[i][0]];
 $('#fGd').innerHTML='<option value="">Mọi tiến độ GPMB</option>'+[['e','Đang ở bước',-1],['c','Chưa xong bước',0],['x','Đã xong bước',0]].map(([p,l,a])=>`<optgroup label="${l}">${GD.concat(a<0?[0]:[]).map((_,j)=>j+a).map(i=>`<option value="${p}${i}">${i<0?'Chưa bắt đầu':(i+1)+'. '+GD[i][1]}</option>`).join('')}</optgroup>`).join('');
 $('#fmGd').innerHTML='<option value="">Chưa bắt đầu</option>'+GD.map(([,l],i)=>`<option>${l}</option>`).join('');
 $('#fmGdN').innerHTML=GD.map(([k,l],i)=>`<label class="note">${i+1}. ${l}<input type="date" name="gdn_${k}"></label>`).join('');
+/* KINH PHÍ: tien_bt tien_ht tien_tdc da_chi (đồng). Ngày chi trả = ngày bước "Chi trả" trong gd_ngay.
+   Bộ lọc st.ct: chua (chưa có số tiền PA) · co · thieu (có PA, đã chi < tổng) · du (chi đủ) */
+const tien=v=>{if(typeof v==='number')return Math.round(v);let s=String(v??'').replace(/[^\d,.-]/g,'');if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');else if(/\.\d{1,2}$/.test(s)&&!/\.\d{3}\./.test(s))s=s.replace(/,/g,'');else s=s.replace(/[.,]/g,'');return Math.round(parseFloat(s)||0)};
+const tongPA=r=>tien(r.tien_bt)+tien(r.tien_ht)+tien(r.tien_tdc);
+const ctOf=r=>{const t=tongPA(r);return!t?'chua':tien(r.da_chi)>=t?'du':'thieu'};
+const fT=v=>fN(Math.round(v||0));
+const fTy=v=>{v=+v||0;const a=Math.abs(v);return a>=1e9?(v/1e9).toLocaleString('vi-VN',{maximumFractionDigits:2})+' tỷ':a>=1e6?(v/1e6).toLocaleString('vi-VN',{maximumFractionDigits:1})+' triệu':fN(v)+' đ'};
+const tienCell=r=>{const t=tongPA(r);if(!t)return'';const c=tien(r.da_chi);return`<div class="note" title="BT ${fT(tien(r.tien_bt))} · HT ${fT(tien(r.tien_ht))} · TĐC ${fT(tien(r.tien_tdc))} · đã chi ${fT(c)}">PA ${fTy(t)} · <span class="${c>=t?'ok':c?'warn':'bad'}">${c>=t?'đã chi đủ':c?'đã chi '+pct(c,t)+'%':'chưa chi'}</span></div>`};
+function renderTien(){
+  const S=rs=>{const a=rs.reduce((o,r)=>{o.bt+=tien(r.tien_bt);o.ht+=tien(r.tien_ht);o.tdc+=tien(r.tien_tdc);o.chi+=Math.min(tien(r.da_chi),tongPA(r)||tien(r.da_chi));return o},{bt:0,ht:0,tdc:0,chi:0});a.tong=a.bt+a.ht+a.tdc;a.n=rs.length;a.pa=rs.filter(r=>tongPA(r)).length;a.du=rs.filter(r=>ctOf(r)==='du').length;a.thieu=rs.filter(r=>ctOf(r)==='thieu').length;return a};
+  const T=S(D);
+  $('#tienCards').innerHTML=[[fTy(T.tong),'','tổng kinh phí phương án',`${T.pa}/${T.n} hộ đã có số tiền`,'{"ct":"co"}'],[fTy(T.chi),'ok','đã chi trả',pct(T.chi,T.tong)+'% kinh phí · '+T.du+' hộ chi đủ','{"ct":"du"}'],[fTy(T.tong-T.chi),T.tong-T.chi?'bad':'ok','còn phải chi',T.thieu+' hộ có PA chưa chi đủ','{"ct":"thieu"}'],[T.n-T.pa,T.n-T.pa?'warn':'ok','hộ chưa có số tiền PA','','{"ct":"chua"}']]
+    .map(([v,c,l,s,f])=>`<button class="card" data-f='${f}'><b class="${c}">${v}</b><span>${l}</span><i>${s}</i></button>`).join('');
+  const tos=[...new Set(D.map(r=>r.to||''))].sort((a,b)=>(a?0:1)-(b?0:1)||a.localeCompare(b,'vi',{numeric:true}));
+  const tr=(t,a,foot)=>{const T=foot?'':JSON.stringify(t||'_');const b=k=>foot?`{${k}}`:`{"to":${T}${k?','+k:''}}`;const c=(v,f,cl='')=>v?`<button class="lk ${cl}" data-f='${f}'>${v}</button>`:'<span class="mute">0</span>';
+    return`<tr><td>${foot?'<b>Tổng cộng</b>':`<button class="tag ${TO_CLS[t]||'t0'}" data-f='${b('')}'>${esc(t||'Chưa phân tổ')}</button>`}</td><td class="n">${c(a.pa,b('"ct":"co"'))}/${a.n}</td><td class="n">${fT(a.bt)}</td><td class="n">${fT(a.ht)}</td><td class="n">${fT(a.tdc)}</td><td class="n"><b>${fT(a.tong)}</b></td><td class="n ok">${fT(a.chi)}</td><td class="n ${a.tong-a.chi?'bad':''}">${fT(a.tong-a.chi)}</td><td class="n"><span class="bar noprint"><i style="width:${pct(a.chi,a.tong)}%"></i></span>${pct(a.chi,a.tong)}%</td><td class="n">${c(a.thieu,b('"ct":"thieu"'),'bad')}</td></tr>`};
+  $('#tTien').innerHTML=`<thead><tr><th>Tổ</th><th class="n">Hộ có PA</th><th class="n">Bồi thường</th><th class="n">Hỗ trợ</th><th class="n">Tái định cư</th><th class="n">Tổng PA</th><th class="n">Đã chi</th><th class="n">Còn phải chi</th><th class="n">Tỷ lệ chi</th><th class="n">Hộ chưa chi đủ</th></tr></thead><tbody>${tos.map(t=>tr(t,S(D.filter(r=>(r.to||'')===t)))).join('')}</tbody><tfoot>${tr('',T,1)}</tfoot>`;
+}
 function renderGd(){
   const N=D.length,cnt=new Array(GD.length+1).fill(0);D.forEach(r=>cnt[gdIdx(r)+1]++);
   const xong=i=>cnt.slice(i+1).reduce((a,b)=>a+b,0);   // số hộ đã xong bước i
@@ -543,7 +572,7 @@ function conLai(r){
 const coAnhR=r=>num(r.anh)>0||!!r.ht||!!r.ht_file;
 const choOf=r=>r._moi?[r._moi]:CHO.filter(c=>c.hoId===String(r.id)&&c.loai!=='them');
 const virtRows=()=>CHO.filter(c=>c.loai==='them').map(c=>({...c.data,id:c.hoId,stt:c.data.stt||'—',_moi:c}));
-const FLD={stt:'STT',ma:'Mã HS',canbo:'Cán bộ thụ lý',ten:'Họ tên',diachi:'Địa chỉ',phuong:'Phường',kp:'Khu phố',to:'Tổ',to_bd:'Tờ',thua:'Thửa',dt:'DT thu hồi',giaitoa:'Giải tỏa',tb_so:'Số TB',tb_ngay:'Ngày TB',anh:'Số ảnh',ht:'Link hiện trạng',duyet:'Chờ duyệt',ghichu:'Ghi chú',gd:'Tiến độ GPMB',gd_ngay:'Ngày các bước GPMB'};
+const FLD={stt:'STT',ma:'Mã HS',canbo:'Cán bộ thụ lý',ten:'Họ tên',diachi:'Địa chỉ',phuong:'Phường',kp:'Khu phố',to:'Tổ',to_bd:'Tờ',thua:'Thửa',dt:'DT thu hồi',giaitoa:'Giải tỏa',tb_so:'Số TB',tb_ngay:'Ngày TB',anh:'Số ảnh',ht:'Link hiện trạng',duyet:'Chờ duyệt',ghichu:'Ghi chú',tien_bt:'Tiền BT',tien_ht:'Tiền HT',tien_tdc:'Tiền TĐC',da_chi:'Đã chi',gd:'Tiến độ GPMB',gd_ngay:'Ngày các bước GPMB'};
 const LOAI={kemht:'đính kèm ảnh hiện trạng',goht:'gỡ ảnh hiện trạng',sua:'sửa thông tin',them:'thêm hộ ngoài danh sách',xoa:'xóa dòng',kem:'đính kèm thông báo',go:'gỡ thông báo'};
 function choHtml(c,r){
   let d='';
@@ -559,11 +588,11 @@ function filtered(){
   const q=fold(st.q);
   return D.concat(virtRows()).filter(r=>(!st.to||r.to===st.to||(st.to==='_'&&!r.to))&&(!st.cb||(st.cb==='_co'?!!r.canbo:st.cb==='_chua'?!r.canbo:r.canbo===st.cb))
     &&(!st.dt||(st.dt==='co'?num(r.dt)>0:!num(r.dt)))&&(!st.cl||conLai(r).k===st.cl)&&(!st.anh||(st.anh==='co'?coAnhR(r):!coAnhR(r)))
-    &&(!st.p||r.phuong===st.p)&&(!st.kp||r.kp===st.kp)&&(!st.tbd||r.to_bd===st.tbd)&&(!st.gt||(st.gt==='none'?!r.giaitoa:r.giaitoa===st.gt))&&(!st.gd||gdMatch(r,st.gd))
+    &&(!st.p||r.phuong===st.p)&&(!st.kp||r.kp===st.kp)&&(!st.tbd||r.to_bd===st.tbd)&&(!st.gt||(st.gt==='none'?!r.giaitoa:r.giaitoa===st.gt))&&(!st.gd||gdMatch(r,st.gd))&&(!st.ct||(st.ct==='co'?ctOf(r)!=='chua':ctOf(r)===st.ct))
     &&(st.tb==='all'||(st.tb==='co'&&hasTB(r))||(st.tb==='chua'&&!hasTB(r))||(st.tb==='duyet'&&(r.duyet||choOf(r).length)))
     &&(!q||fold([r.stt,r.ma,r.ten,r.diachi,r.ghichu,r.canbo,'to '+r.to_bd,'thua '+r.thua,r.to_bd+'/'+r.thua].join(' ')).includes(q)));
 }
-function setFilter(o){Object.assign(st,{q:'',to:'',cb:'',dt:'',cl:'',anh:'',p:'',kp:'',tbd:'',gt:'',gd:'',tb:'all'},o);$('#q').value=st.q;syncSeg();render();$('#tMain').scrollIntoView({behavior:'smooth',block:'start'})}
+function setFilter(o){Object.assign(st,{q:'',to:'',cb:'',dt:'',cl:'',anh:'',p:'',kp:'',tbd:'',gt:'',gd:'',ct:'',tb:'all'},o);$('#q').value=st.q;syncSeg();render();$('#tMain').scrollIntoView({behavior:'smooth',block:'start'})}
 function syncSeg(){$('#segView').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===st.view));$('#segTB').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.s===st.tb))}
 
 /* ================================================================
@@ -588,7 +617,7 @@ function render(){
     [dcC.size,dcC.size?'bad':'ok','địa chỉ còn hộ chưa có TB','/ '+dc.size+' địa chỉ','{"tb":"chua","view":"dc"}']
   ].map(([v,c,l,s,f])=>`<button class="card" data-f='${f}'><b class="${c}">${v}</b><span>${l}</span><i>${s}</i></button>`).join('');
 
-  renderGd();
+  renderGd();renderTien();
   const tos=[...new Set(D.map(r=>r.to||''))].sort((a,b)=>(a?0:1)-(b?0:1)||a.localeCompare(b,'vi',{numeric:true}));
   const sumRow=rs=>{const c=rs.filter(hasTB);return[rs.length,c.length,rs.length-c.length,pct(c.length,rs.length),c.reduce((s,r)=>s+num(r.dt),0),rs.filter(r=>!num(r.dt)).length,rs.filter(r=>r.duyet).length,rs.filter(coAnhR).length,rs.filter(r=>gdIdx(r)>=GD_END).length]};
   const cell=(v,f,cls='')=>v?`<button class="lk ${cls}" data-f='${f}'>${v}</button>`:`<span class="mute">0</span>`;
@@ -604,7 +633,7 @@ function render(){
   opts('#fTo','Mọi tổ NVBT',D.map(r=>r.to),st.to,'<option value="_">Chưa phân tổ</option>');
   opts('#fCb','Mọi cán bộ thụ lý',D.map(r=>r.canbo),st.cb,'<option value="_co">Đã có cán bộ thụ lý</option><option value="_chua">Chưa có cán bộ thụ lý</option>');
   opts('#fP','Mọi phường',D.map(r=>r.phuong),st.p);opts('#fKp','Mọi khu phố',D.map(r=>r.kp),st.kp);opts('#fTbd','Mọi tờ',D.map(r=>r.to_bd),st.tbd);
-  for(const [id,k] of [['#fDt','dt'],['#fCl','cl'],['#fAnh','anh'],['#fGt','gt'],['#fGd','gd']])$(id).value=st[k];
+  for(const [id,k] of [['#fDt','dt'],['#fCl','cl'],['#fAnh','anh'],['#fGt','gt'],['#fGd','gd'],['#fCt','ct']])$(id).value=st[k];
   $('#dlCb').innerHTML=[...new Set(D.map(r=>r.canbo).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
   $('#bTaoLoat').hidden=!MAU||!has('denghi');$('#bAdd').hidden=!has('denghi');
   topBar();
@@ -625,7 +654,7 @@ let sortK='',sortD=1;
 const sortRows=R=>{if(!sortK)return R;const v=r=>sortK==='gd'?gdIdx(r):sortK==='dt'?num(r.dt):sortK==='thua'?(String(r.to_bd).padStart(6,'0')+'/'+String(r.thua).padStart(6,'0')):sortK==='stt'?(+r.stt||0):fold(r[sortK]);return R.slice().sort((a,b)=>{const x=v(a),y=v(b);return(x>y?1:x<y?-1:0)*sortD})};
 function list(){
   const R=sortRows(filtered());
-  const sub=[st.to&&(st.to==='_'?'Chưa phân tổ':st.to),st.cb&&!st.cb.startsWith('_')&&st.cb,st.p&&'P'+st.p,st.kp&&'KP '+st.kp,st.tbd&&'Tờ '+st.tbd,{co:'Đã có thông báo',chua:'Chưa có thông báo',duyet:'Chờ duyệt'}[st.tb],st.gd&&gdFT(st.gd)].filter(Boolean).join(' · ');
+  const sub=[st.to&&(st.to==='_'?'Chưa phân tổ':st.to),st.cb&&!st.cb.startsWith('_')&&st.cb,st.p&&'P'+st.p,st.kp&&'KP '+st.kp,st.tbd&&'Tờ '+st.tbd,{co:'Đã có thông báo',chua:'Chưa có thông báo',duyet:'Chờ duyệt'}[st.tb],st.gd&&gdFT(st.gd),st.ct&&{chua:'Chưa có số tiền PA',co:'Đã có PA',thieu:'Chưa chi đủ',du:'Đã chi đủ'}[st.ct]].filter(Boolean).join(' · ');
   $('#pTitle').textContent='Danh sách hộ dân bị ảnh hưởng — '+CFG.duAn;
   $('#pSub').textContent=(sub?sub+' · ':'')+R.length+' hộ · in ngày '+new Date().toLocaleDateString('vi-VN');
   let h,body;
@@ -638,7 +667,7 @@ function list(){
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
       <td style="white-space:nowrap"><button class="lk" data-a="map" data-id="${esc(r.id)}" title="Xem trên bản đồ">Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)}</button></td>
       <td class="n">${num(r.dt)?f1(num(r.dt)):'<span class="warn">cần bổ sung</span>'}${cl.v!==undefined?`<div class="note ${cl.k==='duoi'?'warn':''}">còn lại ${f1(cl.v)} m²</div>`:''}</td>
-      <td>${esc(r.giaitoa)||'<span class="note">—</span>'}${gdCell(r)}</td><td class="tbc">${tbCell(r)}</td></tr>`}).join('');
+      <td>${esc(r.giaitoa)||'<span class="note">—</span>'}${gdCell(r)}${tienCell(r)}</td><td class="tbc">${tbCell(r)}</td></tr>`}).join('');
   }else{
     const key=st.view==='thua'?r=>thuaList(r).map(t=>'Tờ '+r.to_bd+' · Thửa '+t):r=>[r.diachi||'(chưa ghi địa chỉ)'];
     const G=new Map();R.forEach(r=>key(r).forEach(k=>{G.has(k)||G.set(k,[]);G.get(k).push(r)}));
@@ -742,8 +771,9 @@ function hoi(msg,inputLabel){return new Promise(ok=>{const d=document.createElem
 /* ================================================================
    8. NHẬP / XUẤT EXCEL
    ================================================================ */
-const COLS=[['stt','STT',/^stt$|^so tt/],['ma','Mã số hồ sơ',/ma (so )?ho so/],['canbo','Cán bộ thụ lý',/can bo/],['ten','Họ và tên',/ho (va )?ten|chu su dung|nguoi su dung/],['diachi','Địa chỉ thu hồi',/dia chi/],['phuong','Phường (cũ)',/^phuong|^p$/],['kp','Khu phố',/khu pho|^kp/],['to','Tổ NVBT',/to nvbt|to boi thuong|^to$/],['to_bd','Số tờ',/so to|to ban do/],['thua','Số thửa',/thua/],['dt','Diện tích thu hồi (m²)',/dien tich|dt thu hoi/],['giaitoa','Giải tỏa',/giai toa|toan phan|mot phan/],['tb_so','Số thông báo',/so (thong bao|tb)/],['tb_ngay','Ngày thông báo',/ngay (thong bao|tb)/],['anh','Số ảnh hiện trạng',/anh/],['ht','Link hồ sơ hiện trạng',/hien trang|link/],['gd','Tiến độ GPMB (bước đã xong)',/giai doan|tien do/],...GD.map(([k,l,re])=>['gdn_'+k,'Ngày '+l,new RegExp('^ngay .*('+re.source+')')]),['ghichu','Ghi chú',/ghi chu|phap ly/]];
-const colVal=(r,k)=>k==='dt'?num(r.dt)||'':k==='gd'?(gdIdx(r)>=0?gdTen(gdIdx(r)):''):k.startsWith('gdn_')?dVN(gdNgay(r)[k.slice(4)]||''):r[k]??'';
+const COLS=[['stt','STT',/^stt$|^so tt/],['ma','Mã số hồ sơ',/ma (so )?ho so/],['canbo','Cán bộ thụ lý',/can bo/],['ten','Họ và tên',/ho (va )?ten|chu su dung|nguoi su dung/],['diachi','Địa chỉ thu hồi',/dia chi/],['phuong','Phường (cũ)',/^phuong|^p$/],['kp','Khu phố',/khu pho|^kp/],['to','Tổ NVBT',/to nvbt|to boi thuong|^to$/],['to_bd','Số tờ',/so to|to ban do/],['thua','Số thửa',/thua/],['dt','Diện tích thu hồi (m²)',/dien tich|dt thu hoi/],['giaitoa','Giải tỏa',/giai toa|toan phan|mot phan/],['tb_so','Số thông báo',/so (thong bao|tb)/],['tb_ngay','Ngày thông báo',/ngay (thong bao|tb)/],['anh','Số ảnh hiện trạng',/anh/],['ht','Link hồ sơ hiện trạng',/hien trang|link/],['tien_bt','Tiền bồi thường (đ)',/tien boi thuong|^boi thuong/],['tien_ht','Tiền hỗ trợ (đ)',/ho tro/],['tien_tdc','Tiền tái định cư (đ)',/tdc|tai dinh cu/],['da_chi','Đã chi trả (đ)',/da chi|so tien chi/],['gd','Tiến độ GPMB (bước đã xong)',/giai doan|tien do/],...GD.map(([k,l,re])=>['gdn_'+k,'Ngày '+l,new RegExp('^ngay .*('+re.source+')')]),['ghichu','Ghi chú',/ghi chu|phap ly/]];
+const TIEN_K=['tien_bt','tien_ht','tien_tdc','da_chi'];
+const colVal=(r,k)=>k==='dt'?num(r.dt)||'':TIEN_K.includes(k)?tien(r[k])||'':k==='gd'?(gdIdx(r)>=0?gdTen(gdIdx(r)):''):k.startsWith('gdn_')?dVN(gdNgay(r)[k.slice(4)]||''):r[k]??'';
 async function importXls(){
   const f=await pickFile('.xlsx,.xls,.csv');if(!f)return;
   await need('xlsx');const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
@@ -756,6 +786,7 @@ async function importXls(){
     if(o.giaitoa){const g=fold(o.giaitoa);o.giaitoa=/toan/.test(g)?'Toàn phần':/mot/.test(g)?'Một phần':''}
     const n={};for(const [k] of GD){const v=isoD(o['gdn_'+k]);delete o['gdn_'+k];if(v)n[k]=v}if(Object.keys(n).length)o.gd_ngay=JSON.stringify(n);
     if(o.gd!==undefined||o.gd_ngay){const j=gdIdx(o);o.gd=j>=0?GD[j][1]:''}
+    for(const k of TIEN_K)if(o[k])o[k]=String(tien(o[k]));
     if(o.to&&/^\d+$/.test(o.to))o.to='Tổ '+o.to;o.phuong=String(o.phuong||'').replace(/^p(huong)?\.?\s*/i,'');o.kp=String(o.kp||'').replace(/^(kp|khu pho|khu phố)\.?\s*/i,'');
     if(!o.stt)o.stt=String(i+1);return o});
   const thay=CFG.api&&!isAdmin()?false:await hoi(`Đọc được ${rows.length} hộ, ${Object.keys(map).length} cột (${Object.keys(map).map(k=>COLS.find(c=>c[0]===k)[1]).join(', ')}). THAY toàn bộ danh sách hiện tại? (Không = thêm vào cuối)`);
@@ -768,9 +799,22 @@ async function importXls(){
 async function exportXls(mau){
   await need('xlsx');
   const R=mau?[]:filtered();
-  const aoa=[COLS.map(c=>c[1]).concat(mau?[]:['DT còn lại (m²)'])].concat(R.map(r=>COLS.map(([k])=>colVal(r,k)).concat([conLai(r).v!==undefined?+conLai(r).v.toFixed(1):''])));
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=aoa[0].map((h,i)=>({wch:i===3?30:i===4?28:14}));
+  const aoa=[COLS.map(c=>c[1]).concat(mau?[]:['Tổng PA (đ)','Còn phải chi (đ)','DT còn lại (m²)'])].concat(R.map(r=>COLS.map(([k])=>colVal(r,k)).concat([tongPA(r)||'',tongPA(r)?Math.max(0,tongPA(r)-tien(r.da_chi)):'',conLai(r).v!==undefined?+conLai(r).v.toFixed(1):''])));
+  const H=aoa[0],sumK=['dt',...TIEN_K];
+  if(!mau&&R.length){   // dòng tổng: cột Họ tên để trống → nhập lại Excel không thành hộ
+    const t=H.map(()=>'');t[0]='TỔNG CỘNG ('+R.length+' hộ)';COLS.forEach(([k],i)=>{if(sumK.includes(k))t[i]=R.reduce((s,r)=>s+(+colVal(r,k)||0),0)});
+    t[COLS.length]=R.reduce((s,r)=>s+tongPA(r),0);t[COLS.length+1]=R.reduce((s,r)=>s+(tongPA(r)?Math.max(0,tongPA(r)-tien(r.da_chi)):0),0);aoa.push(t)}
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=H.map((h,i)=>({wch:i===3?30:i===4?28:/\(đ\)/.test(h)?16:14}));
+  const money=H.map((h,i)=>/\(đ\)/.test(h)?i:-1).filter(i=>i>=0);
+  for(let r=1;r<aoa.length;r++)for(const c of money){const ce=ws[XLSX.utils.encode_cell({r,c})];if(ce&&ce.t==='n')ce.z='#,##0'}
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tổng');
+  if(!mau){   // trang 2: tổng hợp theo tổ
+    const tos=[...new Set(R.map(r=>r.to||''))].sort((a,b)=>a.localeCompare(b,'vi',{numeric:true}));
+    const row=(t,rs)=>{const bt=rs.reduce((s,r)=>s+tien(r.tien_bt),0),ht=rs.reduce((s,r)=>s+tien(r.tien_ht),0),tdc=rs.reduce((s,r)=>s+tien(r.tien_tdc),0),chi=rs.reduce((s,r)=>s+Math.min(tien(r.da_chi),tongPA(r)||tien(r.da_chi)),0);
+      return[t,rs.length,rs.filter(hasTB).length,rs.filter(r=>gdIdx(r)>=GD_END).length,+rs.reduce((s,r)=>s+num(r.dt),0).toFixed(1),bt,ht,tdc,bt+ht+tdc,chi,bt+ht+tdc-chi]};
+    const a2=[['Tổ','Số hộ','Đã có TB','Đã bàn giao MB','DT thu hồi (m²)','Bồi thường (đ)','Hỗ trợ (đ)','Tái định cư (đ)','Tổng PA (đ)','Đã chi (đ)','Còn phải chi (đ)']].concat(tos.map(t=>row(t||'Chưa phân tổ',R.filter(r=>(r.to||'')===t))),[row('TỔNG CỘNG',R)]);
+    const w2=XLSX.utils.aoa_to_sheet(a2);w2['!cols']=a2[0].map(()=>({wch:16}));for(let r=1;r<a2.length;r++)for(let c=5;c<=10;c++){const ce=w2[XLSX.utils.encode_cell({r,c})];if(ce)ce.z='#,##0'}
+    XLSX.utils.book_append_sheet(wb,w2,'Theo tổ')}
   XLSX.writeFile(wb,mau?'Mau_danh_sach_ho.xlsx':'Danh_sach_ho_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
@@ -844,7 +888,7 @@ function pickParcel(k,keep){
   const rs=hoOf(k),P=PARCEL.get(k),c=b.getCenter(),ll=c.lat.toFixed(6)+','+c.lng.toFixed(6),thu=rs.reduce((s,r)=>s+num(r.dt),0);
   $('#mInfo').innerHTML=`<h3>Tờ ${esc(k.split('/')[0])} · Thửa ${esc(k.split('/')[1])}</h3>
    <div class="note">DT thửa trên bản vẽ: <b>${P?f1(P.dt):'—'} m²</b>${thu?` · thu hồi ${f1(thu)} m² · còn lại ${P?f1(P.dt-thu):'—'} m²`:''}</div>
-   ${rs.length?rs.map(r=>`<div class="ho"><span class="nm">${esc(r.ten)}</span> <span class="note">STT ${esc(r.stt)}${r.ma?' · '+esc(r.ma):''}</span><br>${esc(r.diachi)} · ${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:''} · ${num(r.dt)?f1(num(r.dt))+' m² · ':''}${esc(r.giaitoa)}<br>${hasTB(r)?`<span class="ok">✓ Đã có TB ${esc(r.tb_so||'')}</span>`:'<span class="bad">Chưa có thông báo</span>'} · Tiến độ: <b>${esc(gdTen(gdIdx(r)))}</b>
+   ${rs.length?rs.map(r=>`<div class="ho"><span class="nm">${esc(r.ten)}</span> <span class="note">STT ${esc(r.stt)}${r.ma?' · '+esc(r.ma):''}</span><br>${esc(r.diachi)} · ${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:''} · ${num(r.dt)?f1(num(r.dt))+' m² · ':''}${esc(r.giaitoa)}<br>${hasTB(r)?`<span class="ok">✓ Đã có TB ${esc(r.tb_so||'')}</span>`:'<span class="bad">Chưa có thông báo</span>'} · Tiến độ: <b>${esc(gdTen(gdIdx(r)))}</b>${tienCell(r)}
      <div class="act">${r.tb_file?`<button data-a="xem" data-id="${esc(r.id)}">Xem TB</button>`:''}${canRow(r)?`<button data-a="sua" data-id="${esc(r.id)}">Sửa</button>`:''}${coAnhR(r)?`<button data-a="ht" data-id="${esc(r.id)}">Ảnh hiện trạng</button>`:''}<button data-a="ds" data-id="${esc(r.id)}">Trong danh sách</button></div></div>`).join(''):'<p class="note">Không có hộ nào trong danh sách ở thửa này.</p>'}
    <div class="act" style="margin-top:8px"><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${ll}">Google Maps</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${ll}">Chỉ đường</a><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}">Street View</a></div>
    <p class="note">Tọa độ tâm: ${ll}</p>`;
@@ -915,7 +959,7 @@ document.addEventListener('click',async e=>{
 const bindSeg=(id,attr,k)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;st[k]=b.dataset[attr];syncSeg();list()});
 bindSeg('#segView','v','view');bindSeg('#segTB','s','tb');
 $('#q').addEventListener('input',e=>{st.q=e.target.value;list()});
-[['#fTo','to'],['#fCb','cb'],['#fDt','dt'],['#fCl','cl'],['#fAnh','anh'],['#fP','p'],['#fKp','kp'],['#fTbd','tbd'],['#fGt','gt'],['#fGd','gd']].forEach(([id,k])=>$(id).addEventListener('change',e=>{st[k]=e.target.value;list()}));
+[['#fTo','to'],['#fCb','cb'],['#fDt','dt'],['#fCl','cl'],['#fAnh','anh'],['#fP','p'],['#fKp','kp'],['#fTbd','tbd'],['#fGt','gt'],['#fGd','gd'],['#fCt','ct']].forEach(([id,k])=>$(id).addEventListener('change',e=>{st[k]=e.target.value;list()}));
 $('#bClear').onclick=()=>setFilter({});
 $('#bReload').onclick=()=>load().then(()=>toast('Đã đọc lại'));
 $('#bPrint').onclick=()=>{document.body.classList.remove('inmap');window.print()};
@@ -924,13 +968,14 @@ $('#bZip').onclick=()=>zipTB().catch(e=>toast(e.message));
 $('#bTaoLoat').onclick=()=>taoLoat().catch(e=>toast(e.message));
 /* sửa / thêm */
 let editR=null;
-function openDlg(r){editR=r;$('#dlgT').textContent=r?`Sửa hộ STT ${r.stt}`:'Thêm hộ';for(const el of $('#fm').elements)if(el.name)el.value=r?.[el.name]??'';
+function openDlg(r){editR=r;$('#dlgT').textContent=r?`Sửa hộ STT ${r.stt}`:'Thêm hộ';for(const el of $('#fm').elements)if(el.name)el.value=r?.[el.name]??'';for(const k of ['tien_bt','tien_ht','tien_tdc','da_chi'])if(r&&tien(r[k]))$('#fm').elements[k].value=fT(tien(r[k]));
   const F=$('#fm').elements,n=gdNgay(r),i=r?gdOf(r.gd):-1;F.gd.value=i>=0?GD[i][1]:'';for(const [k] of GD)F['gdn_'+k].value=n[k]||'';$('#dlg').showModal()}
 $('#bAdd').onclick=()=>openDlg(null);
 $('#dlg').addEventListener('close',async()=>{
   if($('#dlg').returnValue!=='ok')return;
   const o={};for(const el of $('#fm').elements)if(el.name)o[el.name]=el.value.trim();
   const n={};for(const [k] of GD){if(o['gdn_'+k])n[k]=o['gdn_'+k];delete o['gdn_'+k]}
+  for(const k of ['tien_bt','tien_ht','tien_tdc','da_chi'])o[k]=o[k]?String(tien(o[k])):'';
   o.gd_ngay=Object.keys(n).length?JSON.stringify(n):'';{const i=gdIdx(o);o.gd=i>=0?GD[i][1]:''}
   let r=editR;if(r)Object.assign(r,o);else{r={id:'n'+Date.now().toString(36),stt:String(D.reduce((m,x)=>Math.max(m,+x.stt||0),0)+1),tb_file:'',tb_ten:'',...o};D.push(r)}
   try{isSample=false;if(!CFG.api)await capMa();await saveRow(r,editR?'sửa hộ':'thêm hộ')}catch(e){toast('Lỗi ghi: '+e.message);render()}
