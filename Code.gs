@@ -31,6 +31,7 @@ const COT = [
   ['tb_so', 'Số thông báo'], ['tb_ngay', 'Ngày thông báo'], ['tb_file', 'File thông báo (Drive ID)'],
   ['tb_ten', 'Tên file thông báo'], ['anh', 'Số ảnh hiện trạng'], ['ht', 'Link hồ sơ hiện trạng'],
   ['ht_file', 'File ảnh hiện trạng (Drive ID)'], ['ht_ten', 'Tên file ảnh hiện trạng'],
+  ['gd', 'Tiến độ GPMB (bước đã xong)'], ['gd_ngay', 'Ngày các bước GPMB (JSON)'],
   ['duyet', 'Chờ duyệt'], ['ghichu', 'Ghi chú'], ['by', 'Người sửa cuối'], ['at', 'Lúc sửa cuối'], ['id', 'id']
 ];
 const DATA_KEYS = COT.map(c => c[0]).filter(k => ['id', 'by', 'at', 'tb_file', 'tb_ten', 'ht_file', 'ht_ten'].indexOf(k) < 0);

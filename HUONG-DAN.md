@@ -46,6 +46,16 @@ Tên dự án, tên đơn vị, đuôi mã hồ sơ, ngưỡng DT còn lại: qu
 - **Mã hồ sơ** cấp ở máy chủ, không trùng khi nhiều người mở cùng lúc.
 - Bản đồ vẽ bằng canvas, nhãn chỉ hiện thửa trong khung nhìn — bản vẽ vài nghìn thửa vẫn mượt.
 
+## Tiến độ giải phóng mặt bằng
+Khung **Tiến độ giải phóng mặt bằng** (dưới các thẻ số): 7 bước *Kiểm đếm → Nhận định pháp lý → Lập phương án → Công khai PA → Phê duyệt PA → Chi trả → Bàn giao MB*.
+- Mỗi bước: số hộ đã xong / tổng, % — bấm **còn … hộ chưa xong** để lọc ra đúng các hộ đó. Thanh màu trên cùng: số hộ đang dừng ở từng bước, bấm để lọc.
+- **Hạn bàn giao mặt bằng**: quản trị đặt ở ⚙ Cấu hình (cấu hình chung, mọi người thấy) → hiện đếm ngày còn lại / quá hạn và số hộ chưa bàn giao.
+- Cập nhật từng hộ: **✎ Sửa** → ghi **ngày xong** của bước nào là tính hộ đã xong bước đó (lấy bước cao nhất); chưa có ngày thì chọn ô *Tiến độ GPMB — bước đã xong*.
+- Ô lọc **Mọi tiến độ GPMB**: đang ở bước / chưa xong bước / đã xong bước. Bảng Tổ có cột **Đã bàn giao MB**. Cột *Giải tỏa · Tiến độ* bấm tiêu đề để sắp xếp theo tiến độ.
+- Bản đồ: *Tô màu thửa theo* → **Tiến độ GPMB** (thửa nhiều hộ lấy hộ chậm nhất).
+- Excel: cột *Tiến độ GPMB* (ghi chữ hoặc số 1–7) và *Ngày Kiểm đếm*, *Ngày Chi trả*… (dd/mm/yyyy). Xuất Excel có đủ các cột này.
+- Sheet cũ: dán Code.gs mới (Phiên bản mới) rồi chạy lại `caiDat()` để thêm 2 cột *Tiến độ GPMB*, *Ngày các bước GPMB* — chưa chạy thì sửa tiến độ không lưu được.
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 

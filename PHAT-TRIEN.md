@@ -1,6 +1,6 @@
 # PHÁT TRIỂN TIẾP — ds-ho-dan
 
-> **Đọc file này trước khi sửa code.** Đủ để làm tiếp mà không phải đọc lại cả `index.html` (~1.100 dòng).
+> **Đọc file này trước khi sửa code.** Đủ để làm tiếp mà không phải đọc lại cả `index.html` (~1.180 dòng).
 > Cách nhờ Claude làm tiếp, đỡ tốn token: *"Đọc PHAT-TRIEN.md trong repo quocdungvgp/ds-ho-dan, làm mục X ở phần Việc tiếp theo, chạy tests rồi đẩy lên."*
 
 - Trang: https://quocdungvgp.github.io/ds-ho-dan/ (GitHub Pages, nhánh `main`, thư mục gốc — đẩy lên ~1 phút là cập nhật)
@@ -38,11 +38,11 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
 | 3. NGƯỜI DÙNG & QUYỀN | `ME TOKEN RANK has() inScope() canRow() isAdmin()` | |
 | 4. DỮ LIỆU | `api() load(nhe) saveRow delRow capMa getTB putTB delTB`, `SHARED` cấu hình chung | `xong(j,viec)` báo + đọc lại |
 | 4b. DỮ LIỆU MẪU | `sample() sampleMap()` | |
-| 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()`, `filtered()`, đề nghị `CHO choOf virtRows choHtml` | |
+| 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()`, `filtered()`, đề nghị `CHO choOf virtRows choHtml`; **tiến độ GPMB** `GD GD_COL gdIdx gdOf gdNgay gdMatch gdCell renderGd()` | `gdIdx(r)` = bước đã xong (−1…6) |
 | 6. VẼ DANH SÁCH | `render()` (thẻ số, bảng tổ, chip, ô lọc) `tbCell() list() sortRows()` | |
 | 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`TB_FLD docFix()`** tự sửa Word theo web, `dongBo() zipTB hoi()` | |
-| 8. EXCEL | `COLS` (khóa, tiêu đề, regex nhận cột), `importXls exportXls` | |
-| 9. BẢN ĐỒ | `initMap CLS(tô màu) drawMap labels pickParcel suggest meas* exportKML`, `HO_IDX hoOf` | |
+| 8. EXCEL | `COLS` (khóa, tiêu đề, regex nhận cột; `gdn_<bước>` = cột ngày ảo), `colVal()` giá trị xuất, `importXls exportXls` | |
+| 9. BẢN ĐỒ | `initMap CLS(tô màu: tb to gt cl anh gd) drawMap labels pickParcel suggest meas* exportKML`, `HO_IDX hoOf` | |
 | 10. SỰ KIỆN | `route()` (#ds/#bando), click `data-a=…`, hộp sửa hộ, cấu hình | |
 | 11. ĐĂNG NHẬP… | `topBar showLogin`, người dùng `openUsers userForm`, `duyet drawDuyet openLog` | |
 | 12. BỔ SUNG | sắp xếp cột, chép link, tự đọc lại (`ping` 60 s), đính kèm hàng loạt | |
@@ -55,10 +55,13 @@ Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nh�
 
 ## 3. Dữ liệu (Sheet tab "Tổng") — mảng `COT` trong Code.gs
 
-`stt ma canbo ten diachi phuong kp to(Tổ NVBT) to_bd(số tờ) thua(“5, 6” nhiều thửa) dt giaitoa(Toàn phần|Một phần) tb_so tb_ngay tb_file tb_ten anh ht(link) ht_file ht_ten duyet ghichu by at id`
+`stt ma canbo ten diachi phuong kp to(Tổ NVBT) to_bd(số tờ) thua(“5, 6” nhiều thửa) dt giaitoa(Toàn phần|Một phần) tb_so tb_ngay tb_file tb_ten anh ht(link) ht_file ht_ten gd gd_ngay duyet ghichu by at id`
 - Thêm cột: thêm vào `COT` (Code.gs) + `COLS` (index.html, nếu nhập Excel) + form `#fm` + chỗ hiển thị; chạy lại `caiDat()` trên Sheet.
 - Khóa thửa: `"tờ/thửa"` (`keyThua`) — ghép hộ ↔ bando.json (`thua[].l`).
 - Mã hồ sơ: `###/P{phường}/{đuôi}.{số tổ}`, máy chủ cấp (`capMa_`), cấp rồi không đổi.
+- **Tiến độ GPMB**: `gd` = nhãn bước đã xong gần nhất (“Chi trả”; đọc được cả số 1–7 hoặc chữ gần đúng qua regex trong `GD`), `gd_ngay` = JSON `{kd,pl,pa,ck,pd,ct,bg: "yyyy-mm-dd"}`.
+  Bước thật = max(`gd`, bước cao nhất có ngày) — `gdIdx()`. Lưu lại thì trang ghi `gd` theo bước thật. Thêm/bớt/đổi tên bước: sửa mảng `GD` (+ `GD_COL` đủ `GD.length+1` màu).
+  Bộ lọc `st.gd`: `e<i>` đang ở bước i (`e-1` chưa bắt đầu), `c<i>` chưa xong bước i, `x<i>` đã xong. Hạn bàn giao: `CFG.hanBG` (trong `SHARED`).
 
 **bando.json**: `{v, o:[x0,y0], thua:[{id, l:"tờ/thửa", v:[[x,y]…] (m, đã trừ o), dt?}], lop:{ranh:[[[x,y]…]]}}`
 
@@ -87,7 +90,8 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **29/29 OK** (27/11/2026).
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **36/36 OK** (27/11/2026: ui_local 21, ui_server 15).
+Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy).
 
 ## 6. Đẩy lên
@@ -99,9 +103,7 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 ## 7. Việc tiếp theo (đã nghiên cứu, xếp theo giá trị cho công tác bồi thường GPMB)
 
 ### Ưu tiên 1
-1. **Tiến độ GPMB theo giai đoạn** (như thẻ “Số liệu Metro 2” của Ban: 23 giai đoạn, hạn bàn giao mặt bằng đếm ngược).
-   Cột `gd` (giai đoạn hiện tại) + `gd_ngay` (JSON ngày từng bước): Kiểm đếm → Nhận định pháp lý → Lập PA → Công khai → Phê duyệt PA → Chi trả → Bàn giao MB.
-   Thẻ số theo giai đoạn, thanh tiến độ, ô “Hạn bàn giao mặt bằng” trong cấu hình chung (`SHARED`), lọc theo giai đoạn, tô màu bản đồ theo giai đoạn (thêm vào `CLS`).
+1. ~~**Tiến độ GPMB theo giai đoạn**~~ — **XONG 27/11/2026** (xem mục 3 + Nhật ký làm). Còn có thể làm thêm: hạn riêng từng bước (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`); mở rộng tới 23 giai đoạn như thẻ của Ban nếu cần (chỉ sửa mảng `GD`).
 2. **Tiền bồi thường – hỗ trợ – TĐC & chi trả**: cột `tien_bt tien_ht tien_tdc da_chi ngay_chi`; bảng tổng theo tổ; xuất Excel có tổng.
 3. **Nhiều mẫu văn bản** (giấy mời, TB kiểm đếm, biên bản, phiếu chi…) thay vì 1 mẫu TB: lưu `mau/<tên>.docx` trên Drive (`putMau` thêm tên), nút “Tạo văn bản” chọn mẫu, dùng chung trường «HOTEN» «DT» «THUA»… + thêm trường tiền, ngày. Tạo hàng loạt → zip.
 4. **QR mã hồ sơ**: in nhãn bìa hồ sơ (QR = link `#ho=<id>` mở đúng hộ), quét QR bằng camera điện thoại (thư viện qrcode-generator + jsQR). Ban đang dùng “QR hồ sơ / Quét QR”.
@@ -126,3 +128,16 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 - Chế độ một máy: dữ liệu chỉ trong 1 trình duyệt (xóa dữ liệu trình duyệt là mất) → nhắc xuất Excel thường xuyên.
 - Ai mở thẳng file Google Sheet sửa được hết, không qua phân quyền → chỉ chia sẻ Sheet cho quản trị.
 - Cột “Chờ duyệt” (`duyet`) là cờ tay, khác với đề nghị chờ duyệt (tab DeNghi) — có thể bỏ cột này.
+
+---
+
+## 8. Nhật ký làm
+
+### 27/11/2026 — Tiến độ GPMB theo giai đoạn (mục 7.1)
+- `index.html`: khung **Tiến độ giải phóng mặt bằng** (`#pGd`: hạn bàn giao đếm ngày, thanh màu số hộ theo bước, 7 ô bước có % và nút “còn … hộ chưa xong”);
+  ô lọc `#fGd`; cột *Đã bàn giao MB* ở bảng tổ; cột *Giải tỏa · Tiến độ* (vạch 7 bước + bước/ngày, sắp xếp được); form sửa hộ có chọn bước + 7 ô ngày (`gdn_<mã>` → gộp thành `gd_ngay` khi lưu);
+  ô *Hạn bàn giao mặt bằng* (`hanBG`, cấu hình chung); bản đồ chế độ tô màu `gd` (hộ chậm nhất trên thửa) + dòng tiến độ ở khung thông tin thửa + mô tả KML;
+  Excel nhập/xuất cột *Tiến độ GPMB* + *Ngày <bước>* (dd/mm/yyyy hoặc ngày Excel); dữ liệu mẫu có tiến độ rải đều; đề nghị chờ duyệt hiện `gd_ngay` dạng chữ.
+  Regex cột Phường đổi `/phuong/` → `/^phuong|^p$/` (tránh ăn nhầm cột “Ngày lập phương án”).
+- `Code.gs`: thêm `gd`, `gd_ngay` vào `COT` → **người dùng phải dán Code.gs mới + Phiên bản mới + chạy `caiDat()`** (Sheet cũ chưa có 2 cột thì sửa tiến độ bị bỏ qua im lặng).
+- Tests: thêm `fx/ds_gd.xlsx`, 6 bước ở ui_local, 1 bước ở ui_server → 36/36 OK.

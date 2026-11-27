@@ -54,6 +54,11 @@ async def main():
         await (await fc.value).set_files(f'{FX}/ht.pdf'); await ad.wait_for_timeout(2500)
         await ad.click('#tMain tbody tr:nth-child(1) [data-a=ht]'); await ad.wait_for_timeout(3000)
         ok(await ad.locator('#anhGrid canvas').count() == 3, 'ảnh hiện trạng lưu/đọc qua máy chủ'); await ad.click('#anhDong')
+        # tiến độ GPMB lưu qua máy chủ, hạn bàn giao là cấu hình chung
+        await ad.click('#bCfg'); await ad.fill('#fCfg [name=hanBG]', '2027-03-31'); await ad.click('#fCfg button[value=ok]'); await ad.wait_for_timeout(800)
+        await ad.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await ad.fill('#fm [name=gdn_ct]', '2026-11-25'); await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1200)
+        await xm.click('#bReload'); await xm.wait_for_timeout(1000)
+        ok('Chi trả · 25/11/2026' in await xm.inner_text('#tMain tbody tr:nth-child(1)') and '31/03/2027' in await xm.inner_text('#gdHan'), 'tiến độ GPMB lưu Sheet, hạn bàn giao áp cho mọi người')
         await ad.click('#bLog'); await ad.wait_for_timeout(800); ok('duyệt' in await ad.inner_text('#tLog'), 'nhật ký ghi thao tác')
         ok(not R.errs, 'không có lỗi JS ' + str(R.errs))
 

@@ -13,6 +13,9 @@ H = ['STT', 'Họ và tên', 'Địa chỉ thu hồi', 'Phường', 'Khu phố',
 for name, rows in [('ds.xlsx', [[1, 'Nguyễn Test', '1 Đường A', '19', '4', 2, '134', '3', '12,5', 'một phần'], [2, 'Trần Test', '2 Đường A', '19', '4', 2, '134', '4', 20, 'Toàn phần']]),
                    ('ds2.xlsx', [[1, 'Nguyễn Văn An', '10 Đường A', 19, 4, 1, 134, 1, '21,5', 'một phần'], [2, 'Trần Thị Bích', '12 Đường A', 19, 4, 2, 134, 2, 30, 'toàn phần'], [3, 'Lê Văn Mới', '16 Đường A', 19, 4, 2, 134, 5, 12, 'một phần']])]:
     wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'Tổng'; ws.append(H); [ws.append(r) for r in rows]; wb.save(f'{D}/{name}')
+# có cột tiến độ GPMB: bước ghi bằng số (3 = Lập phương án) + ngày chi trả dạng chữ dd/mm/yyyy → tự lên "Chi trả"
+wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'Tổng'; ws.append(H + ['Tiến độ GPMB', 'Ngày kiểm đếm', 'Ngày chi trả'])
+ws.append([1, 'Phạm Tiến Độ', '3 Đường A', '19', '4', 3, '135', '2', 15, 'một phần', 3, '01/09/2026', '15/10/2026']); wb.save(f'{D}/ds_gd.xlsx')
 ims = []
 for i in range(3):
     im = Image.new('RGB', (800, 600), (40 + i * 60, 120, 160)); ImageDraw.Draw(im).text((40, 40), f"Anh {i+1}", fill=(255, 255, 255)); ims.append(im)
