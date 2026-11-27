@@ -2,4 +2,4 @@
   "description": "Thư viện để chạy thử trang KHÔNG cần mạng: playwright chặn CDN và trả file từ node_modules",
   "dependencies": { "leaflet": "1.9.4", "proj4": "2.12.1", "xlsx": "0.18.5", "jszip": "3.10.1", "pizzip": "3.1.7",
     "docxtemplater": "3.47.4", "docx-preview": "0.3.2", "pdfjs-dist": "3.11.174",
-    "qrcode-generator": "1.4.4", "jsqr": "1.4.0", "jspdf": "2.5.1" } }
+    "qrcode-generator": "1.4.4", "jsqr": "1.4.0", "jspdf": "2.5.1", "polygon-clipping": "0.15.7" } }

@@ -108,6 +108,15 @@ async def main():
         await pg.click('[data-ed=tach]'); await pg.mouse.click(cx, cy); await pg.mouse.click(cx, cy - 250); await pg.mouse.click(cx, cy + 250); await pg.wait_for_timeout(500)
         await pg.fill('dialog[open] input', '134/3A'); await pg.click('dialog[open] button[value=ok]'); await pg.wait_for_timeout(600)
         ok('Đã tách' in await pg.inner_text('#edMsg'), 'tách thửa'); await pg.click('[data-ed=tach]')
+        await pg.click('[data-ed=gop]'); await pg.mouse.click(cx - 12, cy); await pg.wait_for_timeout(300); await pg.mouse.click(cx + 12, cy); await pg.wait_for_timeout(1200)
+        ok('thành 1 thửa' in await pg.inner_text('#edMsg'), 'gộp 2 thửa liền nhau → 1 đa giác thật (' + (await pg.inner_text('#edMsg'))[:60] + ')'); await pg.click('[data-ed=gop]')
+        async with pg.expect_download() as d: await pg.click('#mDxf')
+        await (await d.value).save_as('/tmp/_bd.dxf'); import subprocess, json, os
+        rc = subprocess.run(['python3', os.path.join(os.path.dirname(FX), '..', 'dxf2bando.py'), '/tmp/_bd.dxf', '--ranh', 'RANH_THU_HOI', '-o', '/tmp/_bd.json'], capture_output=True, text=True)
+        bj = json.load(open('/tmp/_bd.json')) if rc.returncode == 0 else {'thua': []}; ls = [t['l'] for t in bj['thua']]
+        ok(len(ls) == 24 and '134/7' in ls and not any(l.startswith('?') for l in ls) and bj['lop']['ranh'], 'xuất DXF → dxf2bando.py đọc lại đủ 24 thửa, đúng nhãn, có ranh ' + rc.stderr[-200:])
+        await pg.select_option('#mKho', 'A3'); await pg.click('#mIn'); await pg.wait_for_timeout(900)
+        t = await pg.inner_text('#khung'); ok('Chú giải' in t and 'Tỷ lệ xấp xỉ 1:' in t and 'A3' in t, 'in bản đồ: khung tên, chú giải, tỷ lệ, khổ A3')
         await pg.click('#mDt')
         for dx, dy in [(-150, -100), (150, -100), (150, 100)]: await pg.mouse.click(cx + dx, cy + dy)
         ok('Diện tích' in await pg.inner_text('#measBar'), 'đo diện tích'); await pg.click('#mDt')
@@ -115,6 +124,13 @@ async def main():
         ok((await d.value).suggested_filename.endswith('.kml'), 'xuất KML')
         await pg.select_option('#mMode', 'gd'); await pg.wait_for_timeout(300)
         ok('Chưa bắt đầu' in await pg.inner_text('#mLeg') and 'Xong: Bàn giao MB' in await pg.inner_text('#mLeg'), 'bản đồ tô màu theo tiến độ GPMB')
+        for fx, n, k in [('thua.geojson', 2, '50/1'), ('thua.kml', 3, '51/3')]:
+            async with pg.expect_file_chooser() as fc:
+                await pg.click('#bCfg'); await pg.click('#iMap')
+            await (await fc.value).set_files(f'{FX}/{fx}'); await pg.wait_for_timeout(700)
+            await pg.fill('#mq', k); await pg.press('#mq', 'Enter'); await pg.wait_for_timeout(500)
+            m = re.search(r'DT thửa trên bản vẽ: ([\d.,]+) m²', await pg.inner_text('#mInfo')); dt = float(m.group(1).replace('.', '').replace(',', '.')) if m else 0
+            ok(f'{n} thửa' in await pg.inner_text('#mSrc') and 90 < dt < 105, f'nạp bản vẽ {fx}: {n} thửa, đổi WGS84 → VN2000, DT {dt} m²')
         await pg.set_viewport_size({'width': 390, 'height': 800}); await pg.click('#tabDs'); await pg.wait_for_timeout(400)
         ok(await pg.evaluate('document.documentElement.scrollWidth') <= 390, 'điện thoại không tràn ngang')
         ok(not R.errs, 'không có lỗi JS ' + str(R.errs))

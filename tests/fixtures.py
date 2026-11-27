@@ -17,6 +17,11 @@ for name, rows in [('ds.xlsx', [[1, 'Nguyễn Test', '1 Đường A', '19', '4',
 # có cột tiến độ GPMB: bước ghi bằng số (3 = Lập phương án) + ngày chi trả dạng chữ dd/mm/yyyy → tự lên "Chi trả"
 wb = openpyxl.Workbook(); ws = wb.active; ws.title = 'Tổng'; ws.append(H + ['Tiến độ GPMB', 'Ngày kiểm đếm', 'Ngày chi trả'])
 ws.append([1, 'Phạm Tiến Độ', '3 Đường A', '19', '4', 3, '135', '2', 15, 'một phần', 3, '01/09/2026', '15/10/2026']); wb.save(f'{D}/ds_gd.xlsx')
+# bản vẽ dạng GeoJSON (WGS84) và KML: 2 thửa vuông ~10 m gần Thạnh Mỹ Tây
+import json as _j
+def _sq(x, y, d=0.00009): return [[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]
+_j.dump({'type': 'FeatureCollection', 'features': [{'type': 'Feature', 'properties': {'SoTo': 50, 'SoThua': i + 1}, 'geometry': {'type': 'Polygon', 'coordinates': [_sq(106.7200 + i * 0.0001, 10.8000)]}} for i in range(2)]}, open(f'{D}/thua.geojson', 'w'))
+open(f'{D}/thua.kml', 'w').write('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>' + ''.join(f'<Placemark><name>51/{i+1}</name><Polygon><outerBoundaryIs><LinearRing><coordinates>' + ' '.join(f'{x},{y},0' for x, y in _sq(106.7200 + i * 0.0001, 10.8002)) + '</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>' for i in range(3)) + '</Document></kml>')
 ims = []
 for i in range(3):
     im = Image.new('RGB', (800, 600), (40 + i * 60, 120, 160)); ImageDraw.Draw(im).text((40, 40), f"Anh {i+1}", fill=(255, 255, 255)); ims.append(im)

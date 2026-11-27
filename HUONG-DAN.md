@@ -76,6 +76,12 @@ Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm
 - **⌗ Quét QR hồ sơ**: mở camera điện thoại quét nhãn → trang lọc ngay hộ đó. Không mở được camera thì *Chọn ảnh có QR*. Quét bằng camera điện thoại thường (Zalo, Camera) cũng mở thẳng trang đúng hộ.
 - **📷 Chụp ảnh HT** trên dòng hộ: chụp/chọn nhiều ảnh → trang đóng dấu giờ chụp, tọa độ GPS, tên hộ, tờ/thửa lên ảnh, gộp thành 1 PDF hồ sơ hiện trạng. Hộ đã có hồ sơ thì hỏi thêm vào cuối hay thay mới. Cho phép trình duyệt dùng vị trí để có GPS.
 
+## Bản đồ: in khung tên, xuất DXF, nạp GeoJSON/KML, gộp thửa thật
+- **In bản đồ**: chọn khổ *A3/A4 ngang* rồi bấm ⎙ In bản đồ — có khung tên (dự án, đơn vị, chú giải theo màu đang tô, mũi tên Bắc, tỷ lệ xấp xỉ, ngày in). Trong hộp in của trình duyệt chọn đúng khổ giấy.
+- **⇩ Xuất DXF (AutoCAD)**: bản vẽ hiện tại (kể cả thửa đã tách/gộp/sửa nhãn) ra DXF tọa độ VN2000: lớp THUA_DAT (tô màu theo chế độ đang chọn), SO_THUA (nhãn tờ/thửa), RANH_THU_HOI.
+- **Nạp bản vẽ** nhận thêm GeoJSON và KML (Google Earth, VN2GE). Nhãn thửa lấy từ tên Placemark hoặc thuộc tính SoTo/SoThua.
+- **⊕ Gộp thửa**: 2 thửa liền nhau giờ hợp thành 1 đa giác thật, diện tích cộng lại; không liền nhau thì gộp theo nhãn như trước.
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 
@@ -111,4 +117,4 @@ Thửa ghép với hộ theo “Số tờ/Số thửa”. Hệ VN2000 TP.HCM kin
 Ghi số ảnh và link thư mục/tệp Drive hồ sơ hiện trạng vào cột “Số ảnh hiện trạng”, “Link hồ sơ hiện trạng”. Nút 📷 trên dòng hộ mở link.
 
 ## Chưa có so với trang Ban đang dùng
-Tô màu tay từng thửa; gộp thửa là gộp theo nhãn (không hợp nhất đường ranh thành 1 đa giác).
+Tô màu tay từng thửa.

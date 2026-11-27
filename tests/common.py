@@ -17,7 +17,7 @@ CDN = {  # đường dẫn CDN trong index.html -> file trong node_modules
     'jszip@3.10.1/dist/jszip.min.js': 'jszip/dist/jszip.min.js', 'pizzip@3.1.7/dist/pizzip.min.js': 'pizzip/dist/pizzip.min.js',
     'docxtemplater@3.47.4/build/docxtemplater.js': 'docxtemplater/build/docxtemplater.js',
     'docx-preview@0.3.2/dist/docx-preview.min.js': 'docx-preview/dist/docx-preview.min.js',
-    'qrcode-generator@1.4.4/qrcode.js': 'qrcode-generator/qrcode.js', 'jsqr@1.4.0/dist/jsQR.js': 'jsqr/dist/jsQR.js', 'jspdf@2.5.1/dist/jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js',
+    'qrcode-generator@1.4.4/qrcode.js': 'qrcode-generator/qrcode.js', 'jsqr@1.4.0/dist/jsQR.js': 'jsqr/dist/jsQR.js', 'jspdf@2.5.1/dist/jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js', 'polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js': 'polygon-clipping/dist/polygon-clipping.umd.min.js',
     'pdfjs-dist@3.11.174/build/pdf.min.js': 'pdfjs-dist/build/pdf.min.js', 'pdfjs-dist@3.11.174/build/pdf.worker.min.js': 'pdfjs-dist/build/pdf.worker.min.js',
 }
 

@@ -24,7 +24,7 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
   Có `CFG.api` → đăng nhập, mọi thứ qua Apps Script; máy chủ kiểm quyền lại.
 - **Link dự án**: `…/ds-ho-dan/?api=<URL /exec>` → tự lưu vào cấu hình, xóa tham số khỏi thanh địa chỉ.
 - Thư viện tải từ jsDelivr, ghim phiên bản (bảng `LIB` trong mục 1 và `<head>`): leaflet 1.9.4, proj4 2.12.1 (nạp sẵn);
-  xlsx 0.18.5, jszip 3.10.1, pizzip 3.1.7, docxtemplater 3.47.4, docx-preview 0.3.2, pdfjs-dist 3.11.174, qrcode-generator 1.4.4, jsqr 1.4.0, jspdf 2.5.1 (nạp khi cần qua `need('xlsx',…)`).
+  xlsx 0.18.5, jszip 3.10.1, pizzip 3.1.7, docxtemplater 3.47.4, docx-preview 0.3.2, pdfjs-dist 3.11.174, qrcode-generator 1.4.4, jsqr 1.4.0, jspdf 2.5.1, polygon-clipping 0.15.7 (nạp khi cần qua `need('xlsx',…)`).
   Thêm thư viện: `LIB` + `tests/package.json` + bảng `CDN` trong `tests/common.py`.
 - Hệ tọa độ: `proj4.defs('VN2000HCM', …)` — kinh tuyến trục 105°45′, múi 3°, k=0,9999, 7 tham số towgs84. Tỉnh khác sửa `+lon_0`.
 
@@ -51,6 +51,7 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
 | 13. ẢNH HIỆN TRẠNG | `pdfLib getHT attachHT openAnh drawThumbs bigAnh` | |
 | 14. ẢNH THEO NĂM | `loadWayback` (Esri waybackconfig.json + metadata ngày chụp) | |
 | 15. SỬA BẢN VẼ | `ED edSet edClick clipHalf edPush edApply`, lưu `putMap` | |
+| 17. BẢN ĐỒ NÂNG CAO | `khungTen()` (in A3/A4, `#khung`, `@page` qua `<style id=pageKho>`), `exportDXF() aci() diemNhan()`, `docBanVe() tuVung() nhanTu()` (GeoJSON/KML), `gopHinh()` | DXF R12: lớp THUA_DAT/SO_THUA/RANH_THU_HOI — đọc lại bằng dxf2bando.py |
 | 16. QR & CHỤP ẢNH HT | `hoLink moHo PEND_HO inNhan quetQR qrTuAnh docQR`, `pickFiles viTri dongDau chupHT` → `luuHT(r,buf,name)` (mục 13) | link `#ho=<id>` xử lý trong `route()` + cuối `render()` |
 
 Quy ước: nút thao tác trên dòng dùng `data-a="<việc>" data-id="<id hộ>"`, bắt chung ở mục 10. Lọc nhanh dùng `data-f='{json bộ lọc}'`.
@@ -96,7 +97,7 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **51/51 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **56/56 OK** (27/11/2026). Test DXF cần `pip install ezdxf`. mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy), camera quét QR thật + GPS thật (test dùng nhánh “chọn ảnh”).
 
@@ -118,10 +119,10 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 
 ### Ưu tiên 2
 7. ~~**Báo có đề nghị chờ duyệt** qua email~~ — **XONG**: `propose_` đặt cờ `dn_moi`, trigger `guiBaoDeNghi()` 15 phút gửi 1 thư tới `EMAIL_QT` (trống = chủ script).
-8. **Xuất ngược DXF** bản vẽ đã tách/gộp/sửa nhãn (viết DXF ASCII: LWPOLYLINE lớp THUA_DAT + TEXT lớp SO_THUA, cộng lại gốc `o`) để về AutoCAD.
-9. **In bản đồ A3 có khung tên** (tên dự án, chú giải, mũi tên Bắc, thước tỉ lệ, ngày in) — hiện chỉ in khung bản đồ.
-10. **Gộp hình học thật** khi gộp thửa kề (turf.js `union`), hiện chỉ gộp theo nhãn.
-11. **Nhập bản vẽ khác DXF**: GeoJSON/KML (đã có VN2GE ra KML), DWG cần ODA File Converter chuyển DXF trước.
+8. ~~**Xuất ngược DXF**~~ — **XONG** (R12/AC1009, POLYLINE kín màu ACI theo chế độ tô, TEXT “tờ/thửa” giữa thửa, ranh).
+9. ~~**In bản đồ A3 có khung tên**~~ — **XONG** (chọn A3/A4 ngang; tỷ lệ ghi “xấp xỉ” tính từ zoom + bề rộng khổ giấy).
+10. ~~**Gộp hình học thật**~~ — **XONG** (polygon-clipping `union`; 2 thửa không liền nhau thì vẫn gộp theo nhãn như cũ). Lưu ý: thửa CAD hở khe vài cm sẽ không hợp được → cần nắn bản vẽ.
+11. ~~**Nhập GeoJSON/KML**~~ — **XONG** (GeoJSON WGS84 hoặc VN2000 m; nhãn lấy `l/label/SoTo+SoThua/name`). DWG: vẫn phải chuyển DXF (ODA File Converter) rồi chạy dxf2bando.py.
 12. **Đọc hồ sơ quét bằng AI** → điền thông tin hộ (nối skill nhận định nhà đất Metro 2 / máy AI offline của Ban).
 13. **Dùng ngoài thực địa khi mất sóng** (PWA: service worker + hàng đợi sửa, gửi khi có mạng).
 
@@ -167,4 +168,9 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 ### 27/11/2026 — QR hồ sơ + chụp ảnh hiện trạng bằng điện thoại (mục 7.4, 7.5)
 - Hero: **🏷 In nhãn QR** (các hộ đang lọc), **⌗ Quét QR hồ sơ**. Dòng hộ: **🏷 QR**, **📷 Chụp ảnh HT** (nút đính kèm PDF đổi thành 📎).
 - `attachHT` tách thành `attachHT` (chọn file) + `luuHT` (đếm trang, lưu) để chụp ảnh dùng lại.
+- Không đổi Code.gs.
+
+### 27/11/2026 — Bản đồ: xuất DXF, in khung tên, gộp hình học, nhập GeoJSON/KML (mục 7.8–7.11)
+- Thanh bên bản đồ: ô khổ giấy (A3/A4) + **⇩ Xuất DXF (AutoCAD)**; ⚙ Cấu hình: Nạp bản vẽ nhận `.geojson`, `.kml`.
+- Test: DXF xuất ra được `dxf2bando.py` đọc lại đủ thửa + ranh; tách rồi gộp 2 nửa thành 1 đa giác; GeoJSON/KML đổi VN2000 đúng diện tích (~98 m²).
 - Không đổi Code.gs.
