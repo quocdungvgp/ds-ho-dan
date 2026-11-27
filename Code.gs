@@ -80,7 +80,10 @@ function route_(me, q) {
     case 'me': return { ok: true, me: pub_(me) };
     case 'logout': CacheService.getScriptCache().remove('tk_' + q.token); return { ok: true };
     case 'changePw': return changePw_(me, q.old, q.pass);
-    case 'list': return { ok: true, rows: list_(), cho: pending_(me), me: pub_(me), sheetUrl: me.q === 'quantri' ? SpreadsheetApp.getActive().getUrl() : '' };
+    case 'list': { const rows = list_(); return { ok: true, rows, cho: pending_(me, rows), me: pub_(me), cfg: cfg_(), sheetUrl: me.q === 'quantri' ? SpreadsheetApp.getActive().getUrl() : '' }; }
+    case 'ping': return { ok: true, v: CacheService.getScriptCache().get('ver') || '0' };
+    case 'putCfg': need_(me, 'quantri'); PropertiesService.getScriptProperties().setProperty('cfg', JSON.stringify(q.cfg || {})); log_(me, 'sửa cấu hình dự án', '', JSON.stringify(q.cfg)); return { ok: true };
+    case 'capMa': need_(me, 'sua'); return { ok: true, n: capMa_(me, q.duoi) };
     case 'getFile': return { ok: true, b64: Utilities.base64Encode(DriveApp.getFileById(fileOk_(q.id)).getBlob().getBytes()) };
     case 'getMap': { const f = file_('bando.json'); return { ok: true, map: f ? JSON.parse(f.getBlob().getDataAsString()) : null }; }
     case 'getMau': { const f = file_('mau-thong-bao.docx'); return { ok: true, b64: f ? Utilities.base64Encode(f.getBlob().getBytes()) : '' }; }
@@ -284,8 +287,9 @@ function propose_(me, loai, hoId, data) {
   log_(me, 'gửi đề nghị ' + (LOAI_TEN[loai] || loai), hoId, JSON.stringify(data).slice(0, 300));
   return id;
 }
-function pending_(me) {
-  return dnRows_().filter(d => d.st === 'cho' && (me.q === 'quantri' || d.by === me.ten || inScope_(me, (getRow_(d.hoId) || d.data).to)))
+function pending_(me, rows) {
+  const by = {}; (rows || list_()).forEach(r => { by[r.id] = r; });
+  return dnRows_().filter(d => d.st === 'cho' && (me.q === 'quantri' || d.by === me.ten || inScope_(me, (by[d.hoId] || d.data).to)))
     .map(d => ({ id: d.id, loai: d.loai, hoId: d.hoId, data: d.data, by: d.by, at: d.at, lydo: d.lydo }));
 }
 function decide_(me, ids, ok, lydo) {
@@ -308,7 +312,28 @@ function withdraw_(me, id) {
 }
 
 /* ================= NHẬT KÝ & DRIVE ================= */
-function log_(me, viec, hoId, ct) { tab_('NhatKy').appendRow([new Date(), me.hoten || me.ten, viec, hoId || '', ct || '']); }
+function log_(me, viec, hoId, ct) {
+  tab_('NhatKy').appendRow([new Date(), me.hoten || me.ten, viec, hoId || '', ct || '']);
+  if (viec !== 'đăng nhập') CacheService.getScriptCache().put('ver', String(Date.now()), 21600);   // báo các máy đang mở: có thay đổi
+}
+/* cấu hình chung của dự án (tên dự án, đơn vị, đuôi mã, ngưỡng DT còn lại) — quản trị đặt, mọi người dùng chung */
+function cfg_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('cfg') || '{}'); } catch (e) { return {}; } }
+/* MÃ SỐ HỒ SƠ cấp ở máy chủ (trong khóa) — không trùng khi nhiều người mở cùng lúc: ###/P{phường}/{đuôi}.{số tổ} */
+function capMa_(me, duoi) {
+  const sh = tab_(TEN_TAB), c = cols_(sh), n = sh.getLastRow() - 1; if (n < 1 || c.ma === undefined) return 0;
+  const v = sh.getRange(2, 1, n, c._n).getValues();
+  let mx = v.reduce((m, r) => Math.max(m, parseInt(r[c.ma], 10) || 0), 0), k = 0;
+  duoi = duoi || cfg_().maDuoi || 'DA';
+  v.forEach((r, i) => {
+    const to = String(c.to === undefined ? '' : r[c.to]).trim();
+    if (!String(r[c.ma]).trim() && to && String(r[c.id]).trim()) {
+      mx++; k++;
+      sh.getRange(i + 2, c.ma + 1).setValue(String(mx).padStart(3, '0') + '/P' + String(c.phuong === undefined ? '' : r[c.phuong]).trim() + '/' + duoi + '.' + ((to.match(/\d+/) || [''])[0]));
+    }
+  });
+  if (k) log_(me, 'cấp mã hồ sơ', '', k + ' hộ');
+  return k;
+}
 function nhatKy_(hoId) {
   const s = tab_('NhatKy'), n = s.getLastRow() - 1; if (n < 1) return [];
   const from = Math.max(2, s.getLastRow() - 2000 + 1);

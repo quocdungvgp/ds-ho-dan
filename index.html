@@ -157,6 +157,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <button class="btn" id="bZip">⇩ Tải TB (zip)</button>
       <button class="btn" id="bXls">⇩ Xuất Excel</button>
       <button class="btn" id="bPrint">⎙ In danh sách</button>
+      <button class="btn" id="bKemLoat" hidden>⇪ Đính kèm hàng loạt</button>
+      <a class="btn" id="bSheet" hidden target="_blank" rel="noopener">▦ Mở Google Sheet</a>
     </div>
   </section>
   <div class="ptitle"><h1 id="pTitle"></h1><p id="pSub"></p></div>
@@ -252,6 +254,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <button type="button" class="btn sm" id="iMauXls">⇩ Tải file Excel mẫu</button>
     <button type="button" class="btn sm" id="iReset">Xóa dữ liệu trên máy</button>
   </div>
+  <div class="full" id="linkBox" hidden><label>Link dự án — gửi anh em, mở là tự nối đúng dự án (không chứa mật khẩu)</label><div class="row" style="flex-wrap:nowrap"><input id="linkDA" readonly><button type="button" class="btn sm" id="iCopy">Chép</button></div>
+  </div>
   <p class="full note" id="cfgStat"></p>
   <div class="row"><button class="btn" value="cancel" formnovalidate>Đóng</button><button class="btn pri" value="ok">Lưu cấu hình</button></div>
 </form></dialog>
@@ -336,6 +340,9 @@ const idb=(()=>{let P;const db=()=>P||(P=new Promise((ok,no)=>{const r=indexedDB
 const CFG0={duAn:'Dự án Tuyến đường sắt đô thị số 2 · P. Thạnh Mỹ Tây',donVi:'Ban Quản lý dự án đầu tư xây dựng phường …',api:'',maDuoi:'MT2',nguong:'36',sheetUrl:''};
 let CFG={...CFG0};try{Object.assign(CFG,JSON.parse(localStorage.getItem('dsho_cfg')||'{}'))}catch(e){}
 const saveCfg=()=>{try{localStorage.setItem('dsho_cfg',JSON.stringify(CFG))}catch(e){}};
+/* LINK DỰ ÁN: …/ds-ho-dan/?api=<URL Apps Script> — mở là tự nối đúng dự án, rồi xóa tham số khỏi thanh địa chỉ */
+{const u=new URLSearchParams(location.search).get('api');if(u&&/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){if(u!==CFG.api){CFG.api=u;saveCfg();try{localStorage.removeItem('dsho_tk')}catch(e){}}history.replaceState(null,'',location.pathname+location.hash)}}
+const linkDA=()=>location.origin+location.pathname+'?api='+encodeURIComponent(CFG.api);
 const NG=()=>num(CFG.nguong)||36;
 
 /* ================================================================
@@ -355,6 +362,8 @@ const isAdmin=()=>has('quantri');
 /* ================================================================
    4. DỮ LIỆU — Google Sheet qua Apps Script, hoặc lưu trên máy
    ================================================================ */
+const SHARED=['duAn','donVi','maDuoi','nguong'];   // cấu hình chung của dự án, quản trị đặt, lưu ở máy chủ
+let VER=null;
 let D=[],CHO=[],MAP=null,MAU=null,readAt=null,isSample=false;
 async function api(action,payload={}){
   const r=await fetch(CFG.api,{method:'POST',body:JSON.stringify({action,token:TOKEN,...payload})});
@@ -366,13 +375,14 @@ async function load(nhe){
   if(!nhe)$('#nguon').textContent='Đang tải…';
   if(CFG.api){
     if(!TOKEN){ME=null;D=[];CHO=[];render();showLogin();return}
-    try{const j=await api('list');D=j.rows||[];CHO=j.cho||[];ME=j.me;readAt=new Date();isSample=false;if(j.sheetUrl)CFG.sheetUrl=j.sheetUrl}
+    try{const j=await api('list');D=j.rows||[];CHO=j.cho||[];ME=j.me;readAt=new Date();isSample=false;CFG.sheetUrl=j.sheetUrl||'';VER=null;
+      for(const k of SHARED)if(j.cfg&&j.cfg[k]!==undefined&&j.cfg[k]!=='')CFG[k]=j.cfg[k]}
     catch(e){if(TOKEN)toast('Không đọc được Google Sheet: '+e.message);D=[];CHO=[]}
   }else{ME=LOCAL_ME;CHO=[];await loadLocal()}
   if(!nhe){
     MAP=await loadMap();
-    MAU=await idb.get('mau');
-    if(CFG.api&&ME&&!MAU){try{const j=await api('getMau');if(j.b64)MAU=b64ToBuf(j.b64)}catch(e){}}
+    MAU=null;
+    if(CFG.api){if(ME){try{const j=await api('getMau');if(j.b64)MAU=b64ToBuf(j.b64)}catch(e){}}}else MAU=await idb.get('mau');
   }
   await capMa();
   render();
@@ -385,8 +395,8 @@ async function loadLocal(){
 const saveLocal=()=>{try{localStorage.setItem('dsho_rows',JSON.stringify(D))}catch(e){toast('Bộ nhớ trình duyệt đầy')}};
 async function loadMap(){
   try{const r=await fetch('bando.json',{cache:'no-store'});if(r.ok){const j=await r.json();j._src='bando.json (cùng thư mục với trang)';return j}}catch(e){}
-  const m=await idb.get('bando');if(m){m._src='bản vẽ đã nạp trên máy này';return m}
-  if(CFG.api&&ME){try{const j=await api('getMap');if(j.map){j.map._src='bản vẽ trên Google Drive';return j.map}}catch(e){}}
+  if(CFG.api){if(ME){try{const j=await api('getMap');if(j.map){j.map._src='bản vẽ trên Google Drive của dự án';return j.map}}catch(e){}}}
+  else{const m=await idb.get('bando');if(m){m._src='bản vẽ đã nạp trên máy này';return m}}
   const s=sampleMap();s._src='bản vẽ MẪU (tự sinh) — nạp bando.json của dự án ở ⚙ Cấu hình';return s;
 }
 /* sau mỗi thay đổi trên máy chủ: báo có hiệu lực hay thành đề nghị, rồi đọc lại */
@@ -401,8 +411,10 @@ async function delRow(r,lydo){
   D=D.filter(x=>x!==r);saveLocal();toast('Đã xóa '+r.ten);render();if(mapReady)drawMap();
 }
 /* MÃ SỐ HỒ SƠ: ###/P{phường}/{đuôi}.{tổ} — số không trùng, cấp xong cố định (người có quyền Sửa trở lên cấp) */
+let capMaDone=false;
 async function capMa(){
   if(!has('sua'))return;
+  if(CFG.api){if(capMaDone||!D.some(r=>!r.ma&&r.to))return;capMaDone=true;try{const j=await api('capMa',{duoi:CFG.maDuoi});if(j.n){const k=await api('list');D=k.rows||D;CHO=k.cho||CHO}}catch(e){}return}
   let mx=D.reduce((m,r)=>Math.max(m,parseInt(r.ma)||0),0);const moi=[];
   for(const r of D)if(!r.ma&&r.to&&!r._moi&&inScope(r.to)){mx++;r.ma=String(mx).padStart(3,'0')+'/P'+(r.phuong||'')+'/'+(CFG.maDuoi||'DA')+'.'+(r.to.match(/\d+/)||[''])[0];moi.push(r)}
   if(moi.length){if(CFG.api)await api('bulk',{rows:moi.map(r=>({id:r.id,ma:r.ma,to:r.to}))}).catch(()=>{});else saveLocal()}
@@ -540,15 +552,19 @@ function tbCell(r){
   else h=`<span class="bad">Chưa có</span>${ed?`<div class="act noprint"><button data-a="kem" data-id="${id}">Đính kèm</button>${MAU?`<button data-a="tao" data-id="${id}">Tạo TB</button>`:''}</div>`:''}`;
   return h+(r.duyet?'<div class="warn">· chờ duyệt</div>':'');
 }
+/* sắp xếp: bấm tiêu đề cột (bảng Theo hộ) */
+let sortK='',sortD=1;
+const sortRows=R=>{if(!sortK)return R;const v=r=>sortK==='dt'?num(r.dt):sortK==='thua'?(String(r.to_bd).padStart(6,'0')+'/'+String(r.thua).padStart(6,'0')):sortK==='stt'?(+r.stt||0):fold(r[sortK]);return R.slice().sort((a,b)=>{const x=v(a),y=v(b);return(x>y?1:x<y?-1:0)*sortD})};
 function list(){
-  const R=filtered();
+  const R=sortRows(filtered());
   const sub=[st.to&&(st.to==='_'?'Chưa phân tổ':st.to),st.cb&&!st.cb.startsWith('_')&&st.cb,st.p&&'P'+st.p,st.kp&&'KP '+st.kp,st.tbd&&'Tờ '+st.tbd,{co:'Đã có thông báo',chua:'Chưa có thông báo',duyet:'Chờ duyệt'}[st.tb]].filter(Boolean).join(' · ');
   $('#pTitle').textContent='Danh sách hộ dân bị ảnh hưởng — '+CFG.duAn;
   $('#pSub').textContent=(sub?sub+' · ':'')+R.length+' hộ · in ngày '+new Date().toLocaleDateString('vi-VN');
   let h,body;
   if(st.view==='ho'){
     $('#cnt').textContent=R.length+' hộ';
-    h='<tr><th>STT</th><th>Mã số hồ sơ</th><th>Cán bộ thụ lý</th><th>Họ và tên</th><th>Địa chỉ thu hồi</th><th>P · KP</th><th>Tổ</th><th>Tờ · Thửa</th><th class="n">DT thu hồi (m²)</th><th>Giải tỏa</th><th>Thông báo thu hồi đất</th></tr>';
+    const sh=(k,l,c='')=>`<th class="${c}"><button class="lk" data-sort="${k}" style="text-decoration:none">${l}${sortK===k?(sortD>0?' ▲':' ▼'):''}</button></th>`;
+    h='<tr>'+sh('stt','STT')+sh('ma','Mã số hồ sơ')+sh('canbo','Cán bộ thụ lý')+sh('ten','Họ và tên')+sh('diachi','Địa chỉ thu hồi')+'<th>P · KP</th>'+sh('to','Tổ')+sh('thua','Tờ · Thửa')+sh('dt','DT thu hồi (m²)','n')+'<th>Giải tỏa</th><th>Thông báo thu hồi đất</th></tr>';
     body=R.map(r=>{const cl=conLai(r);return`<tr><td>${esc(r.stt)}</td><td>${r.ma?`<span class="code">${esc(r.ma)}</span>`:'<span class="note">chưa cấp mã</span>'}</td><td>${r.canbo?esc(r.canbo):'<span class="warn note">chưa có</span>'}</td>
       <td><span class="nm">${esc(r.ten)}</span>${num(r.anh)>0||r.ht?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button><button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
@@ -625,7 +641,9 @@ async function importXls(){
     if(o.to&&/^\d+$/.test(o.to))o.to='Tổ '+o.to;o.phuong=String(o.phuong||'').replace(/^p(huong)?\.?\s*/i,'');o.kp=String(o.kp||'').replace(/^(kp|khu pho|khu phố)\.?\s*/i,'');
     if(!o.stt)o.stt=String(i+1);return o});
   const thay=CFG.api&&!isAdmin()?false:await hoi(`Đọc được ${rows.length} hộ, ${Object.keys(map).length} cột (${Object.keys(map).map(k=>COLS.find(c=>c[0]===k)[1]).join(', ')}). THAY toàn bộ danh sách hiện tại? (Không = thêm vào cuối)`);
-  if(thay)D=rows;else{const mx=D.reduce((m,r)=>Math.max(m,+r.stt||0),0);rows.forEach((r,i)=>r.stt=String(mx+i+1));D=D.concat(rows)}
+  if(thay){const old=new Map(D.map(r=>[String(r.stt).trim()+'|'+fold(r.ten).trim(),r]));let giu=0;
+    for(const r of rows){const o=old.get(String(r.stt).trim()+'|'+fold(r.ten).trim());if(o){r.id=o.id;giu++;for(const k of ['tb_file','tb_ten','ma','canbo','anh','ht','tb_so','tb_ngay'])if(!r[k]&&o[k])r[k]=o[k]}}
+    D=rows;if(giu)toast(`Giữ lại thông báo, mã hồ sơ của ${giu} hộ trùng STT + họ tên`)}else{const mx=D.reduce((m,r)=>Math.max(m,+r.stt||0),0);rows.forEach((r,i)=>r.stt=String(mx+i+1));D=D.concat(rows)}
   if(CFG.api){try{await api(thay?'replaceAll':'bulk',{rows:thay?D:rows});toast('Đã ghi '+rows.length+' hộ vào Google Sheet');return load()}catch(e){toast('Lỗi ghi Sheet: '+e.message)}}
   isSample=false;saveLocal();capMa();render();if(mapReady)drawMap();toast('Đã nhập '+rows.length+' hộ');
 }
@@ -649,14 +667,14 @@ const toVN=ll=>{const [x,y]=proj4('WGS84','VN2000HCM',[ll.lng,ll.lat]);return[x,
 function initMap(){
   if(map)return;
   if(!window.L){$('#map').innerHTML='<p class="empty">Không tải được thư viện bản đồ (Leaflet). Kiểm tra mạng.</p>';return}
-  map=L.map('map',{zoomControl:true,maxZoom:22,preferCanvas:false});
+  map=L.map('map',{zoomControl:true,maxZoom:22,preferCanvas:true});map.setView([10.78,106.70],13);
   const gs=L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',{subdomains:'0123',maxZoom:22,maxNativeZoom:21,attribution:'Ảnh © Google'});
   const gr=L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{subdomains:'0123',maxZoom:22,maxNativeZoom:21,attribution:'© Google'});
   const esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'Esri'});
   const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22,maxNativeZoom:19,attribution:'© OpenStreetMap'});
   gs.addTo(map);L.control.layers({'Vệ tinh Google':gs,'Bản đồ Google':gr,'Vệ tinh Esri':esri,'OpenStreetMap':osm},null,{position:'topright'}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
-  map.on('zoomend',labels);map.on('click',e=>{if(meas)measAdd(e.latlng)});
+  map.on('moveend',labels);map.on('click',e=>{if(meas)measAdd(e.latlng)});
   mapReady=true;drawMap();
 }
 const CLS={
@@ -666,12 +684,15 @@ const CLS={
   cl:{fn:rs=>{if(!rs.length)return'k';const k=rs.map(r=>conLai(r).k);return k.includes('tp')?'tp':k.includes('duoi')?'duoi':k.includes('tren')?'tren':'kx'},items:[['duoi','Còn lại dưới ngưỡng','#e03131'],['tren','Còn lại ≥ ngưỡng','#2f9e44'],['tp','Thu hồi toàn phần','#7048e8'],['kx','Chưa xác định','#495057'],['k','Không có hộ','#adb5bd']]},
   anh:{fn:rs=>!rs.length?'k':rs.every(r=>num(r.anh)>0||r.ht)?'co':'chua',items:[['co','Đã có ảnh hiện trạng','#1c7ed6'],['chua','Chưa có ảnh','#e03131'],['k','Không có hộ','#adb5bd']]}
 };
-const hoOf=k=>{const [to,th]=k.split('/');return D.filter(r=>String(r.to_bd)===to&&thuaList(r).includes(th))};
+let HO_IDX=new Map();   // "tờ/thửa" -> [hộ]  (dựng 1 lần mỗi lần vẽ, khỏi lọc lại cả danh sách cho từng thửa)
+const buildHoIdx=()=>{HO_IDX=new Map();for(const r of D)for(const t of thuaList(r)){const k=keyThua(r.to_bd,t);HO_IDX.has(k)||HO_IDX.set(k,[]);HO_IDX.get(k).push(r)}};
+const hoOf=k=>HO_IDX.get(k)||[];
+let LAB=[];
 function drawMap(){
   if(!map||!MAP)return;
   [gThua,gRanh,gLab].forEach(g=>g&&g.remove());poly.clear();
   const mode=$('#mMode').value,C=CLS[mode];
-  gThua=L.featureGroup();gLab=L.layerGroup();
+  gThua=L.featureGroup();gLab=L.layerGroup();buildHoIdx();LAB=[];
   const cnt={};
   for(const t of MAP.thua||[]){
     const k=String(t.l||''),rs=hoOf(k),c=C.fn(rs);cnt[c]=(cnt[c]||0)+1;
@@ -680,7 +701,7 @@ function drawMap(){
     p._k=k;p._c=c;p.on('click',e=>{L.DomEvent.stop(e);if(meas)return measAdd(e.latlng);pickParcel(k)});
     p.bindTooltip(`${esc(k)}${rs.length?' · '+rs.length+' hộ':''}`,{sticky:true});
     gThua.addLayer(p);if(!poly.has(k))poly.set(k,[]);poly.get(k).push(p);
-    gLab.addLayer(L.marker(p.getBounds().getCenter(),{interactive:false,icon:L.divIcon({className:'lbl',html:esc(k),iconSize:null})}));
+    LAB.push([p.getBounds().getCenter(),k]);
   }
   gThua.addTo(map);
   gRanh=L.layerGroup((MAP.lop?.ranh||[]).map(r=>L.polyline(r.map(([x,y])=>toLL(x,y)),{color:'#ffd43b',weight:3,dashArray:'8 6',interactive:false})));
@@ -691,13 +712,16 @@ function drawMap(){
   if(!map._fitted&&gThua.getLayers().length){map.fitBounds(gThua.getBounds(),{padding:[20,20]});map._fitted=1}
   if(selK)pickParcel(selK,true);
 }
-function labels(){if(!gLab)return;const on=$('#mLab').checked&&map.getZoom()>=18;if(on&&!map.hasLayer(gLab))gLab.addTo(map);if(!on&&map.hasLayer(gLab))gLab.remove()}
+/* nhãn tờ/thửa: chỉ vẽ thửa đang trong khung nhìn (tối đa 600) — bản vẽ vài nghìn thửa vẫn mượt */
+function labels(){if(!gLab)return;gLab.clearLayers();if(!$('#mLab').checked||map.getZoom()<18){gLab.remove();return}
+  const b=map.getBounds().pad(.1);let n=0;for(const [c,k] of LAB){if(!b.contains(c))continue;if(++n>600)break;gLab.addLayer(L.marker(c,{interactive:false,icon:L.divIcon({className:'lbl',html:esc(k),iconSize:null})}))}
+  if(!map.hasLayer(gLab))gLab.addTo(map)}
 function pickParcel(k,keep){
   selK=k;const ps=poly.get(k);
   if(!ps){$('#mInfo').innerHTML=`<h3>${esc(k)}</h3><p class="warn">Không thấy thửa này trên bản vẽ.</p>`;return}
   gThua.eachLayer(p=>p.setStyle({weight:p._k===k?4:(hoOf(p._k).length?1.6:.8),color:p._k===k?'#ffffff':p.options.fillColor}));
   ps.forEach(p=>p.bringToFront());
-  const b=L.featureGroup(ps).getBounds();if(!keep){map.fitBounds(b,{maxZoom:20,padding:[60,60]});ps.forEach(p=>{const el=p.getElement();if(el){el.classList.remove('flash');void el.getBBox;el.classList.add('flash')}})}
+  const b=L.featureGroup(ps).getBounds();if(!keep){map.fitBounds(b,{maxZoom:20,padding:[60,60]});let i=0;const fo=ps.map(p=>p.options.fillOpacity);const t=setInterval(()=>{i++;ps.forEach((p,j)=>p.setStyle({fillOpacity:i%2?.9:fo[j]}));if(i>=8)clearInterval(t)},280)}
   const rs=hoOf(k),P=PARCEL.get(k),c=b.getCenter(),ll=c.lat.toFixed(6)+','+c.lng.toFixed(6),thu=rs.reduce((s,r)=>s+num(r.dt),0);
   $('#mInfo').innerHTML=`<h3>Tờ ${esc(k.split('/')[0])} · Thửa ${esc(k.split('/')[1])}</h3>
    <div class="note">DT thửa trên bản vẽ: <b>${P?f1(P.dt):'—'} m²</b>${thu?` · thu hồi ${f1(thu)} m² · còn lại ${P?f1(P.dt-thu):'—'} m²`:''}</div>
@@ -789,12 +813,12 @@ $('#dlg').addEventListener('close',async()=>{
   try{isSample=false;if(!CFG.api)await capMa();await saveRow(r,editR?'sửa hộ':'thêm hộ')}catch(e){toast('Lỗi ghi: '+e.message);render()}
 });
 /* cấu hình */
-$('#bCfg').onclick=()=>{$('#iXls').hidden=!has('sua');$('#iMap').hidden=$('#iMau').hidden=!isAdmin();$('#iReset').hidden=!!CFG.api;for(const el of $('#fCfg').elements)if(el.name)el.value=CFG[el.name]??'';$('#cfgStat').textContent=`Danh sách: ${D.length} hộ${isSample?' (mẫu)':''} · Bản vẽ: ${MAP?MAP._src+' – '+(MAP.thua||[]).length+' thửa':'chưa có'} · Mẫu thông báo: ${MAU?'đã nạp':'chưa nạp'}`;$('#dCfg').showModal()};
-$('#dCfg').addEventListener('close',()=>{if($('#dCfg').returnValue!=='ok')return;const old=CFG.api;for(const el of $('#fCfg').elements)if(el.name)CFG[el.name]=el.value.trim();saveCfg();toast('Đã lưu cấu hình');if(old!==CFG.api){TOKEN='';try{localStorage.removeItem('dsho_tk')}catch(e){}load()}else{render();if(mapReady)drawMap()}});
+$('#bCfg').onclick=()=>{$('#linkBox').hidden=!CFG.api;$('#linkDA').value=CFG.api?linkDA():'';for(const k of SHARED)$('#fCfg').elements[k].readOnly=!!CFG.api&&!isAdmin();$('#iXls').hidden=!has('sua');$('#iMap').hidden=$('#iMau').hidden=!isAdmin();$('#iReset').hidden=!!CFG.api;for(const el of $('#fCfg').elements)if(el.name)el.value=CFG[el.name]??'';$('#cfgStat').textContent=`Danh sách: ${D.length} hộ${isSample?' (mẫu)':''} · Bản vẽ: ${MAP?MAP._src+' – '+(MAP.thua||[]).length+' thửa':'chưa có'} · Mẫu thông báo: ${MAU?'đã nạp':'chưa nạp'}`;$('#dCfg').showModal()};
+$('#dCfg').addEventListener('close',()=>{if($('#dCfg').returnValue!=='ok')return;const old=CFG.api;for(const el of $('#fCfg').elements)if(el.name)CFG[el.name]=el.value.trim();saveCfg();toast('Đã lưu cấu hình');if(CFG.api===old&&CFG.api&&isAdmin())api('putCfg',{cfg:Object.fromEntries(SHARED.map(k=>[k,CFG[k]]))}).then(()=>toast('Đã lưu cấu hình chung cho cả dự án')).catch(e=>toast(e.message));if(old!==CFG.api){TOKEN='';try{localStorage.removeItem('dsho_tk')}catch(e){}load()}else{render();if(mapReady)drawMap()}});
 $('#iXls').onclick=()=>{$('#dCfg').close();importXls().catch(e=>toast(e.message))};
 $('#iMauXls').onclick=()=>exportXls(true).catch(e=>toast(e.message));
-$('#iMap').onclick=async()=>{const f=await pickFile('.json,.geojson');if(!f)return;try{const j=JSON.parse(await f.text());if(!j.thua||!j.o)throw new Error('file không đúng dạng bando.json (cần o, thua)');await idb.set('bando',j);if(CFG.api)api('putMap',{map:j}).catch(()=>{});j._src='bản vẽ đã nạp: '+f.name;MAP=j;if(map)map._fitted=0;render();if(mapReady)drawMap();$('#dCfg').close();toast(`Đã nạp ${j.thua.length} thửa`)}catch(e){toast('Lỗi: '+e.message)}};
-$('#iMau').onclick=async()=>{const f=await pickFile('.docx');if(!f)return;MAU=await f.arrayBuffer();await idb.set('mau',MAU);if(CFG.api)api('putMau',{b64:bufToB64(MAU)}).catch(()=>{});render();$('#dCfg').close();toast('Đã nạp mẫu thông báo — nút "Tạo TB" đã hiện')};
+$('#iMap').onclick=async()=>{const f=await pickFile('.json,.geojson');if(!f)return;try{const j=JSON.parse(await f.text());if(!j.thua||!j.o)throw new Error('file không đúng dạng bando.json (cần o, thua)');if(CFG.api){toast('Đang lưu bản vẽ lên Drive…');await api('putMap',{map:j})}else await idb.set('bando',j);j._src='bản vẽ đã nạp: '+f.name;MAP=j;if(map)map._fitted=0;render();if(mapReady)drawMap();$('#dCfg').close();toast(`Đã nạp ${j.thua.length} thửa`)}catch(e){toast('Lỗi: '+e.message)}};
+$('#iMau').onclick=async()=>{const f=await pickFile('.docx');if(!f)return;MAU=await f.arrayBuffer();if(CFG.api)await api('putMau',{b64:bufToB64(MAU)}).catch(e=>toast(e.message));else await idb.set('mau',MAU);render();$('#dCfg').close();toast('Đã nạp mẫu thông báo — nút "Tạo TB" đã hiện')};
 $('#iReset').onclick=async()=>{if(!await hoi('Xóa danh sách, bản vẽ, mẫu và file thông báo lưu trên máy này?'))return;try{localStorage.removeItem('dsho_rows')}catch(e){}indexedDB.deleteDatabase('dsho');location.reload()};
 $('#xemDong').onclick=()=>$('#dXem').close();
 $('#xemTai').onclick=()=>{const d=$('#dXem');if(d._buf)download(new Blob([d._buf],{type:DOCX}),d._name)};
@@ -822,6 +846,7 @@ function topBar(){
   $('#bMe').hidden=!CFG.api;$('#bMe').textContent=on?`👤 ${ME.hoten||ME.ten} · ${Q_TEN[ME.q]}${ME.to&&ME.to!=='*'&&ME.q!=='quantri'?' · '+ME.to:''}`:'🔑 Đăng nhập';
   $('#bUsers').hidden=$('#bLog').hidden=!(on&&isAdmin());
   $('#bDuyet').hidden=!(on&&CHO.length);$('#nDuyet').textContent=CHO.length;
+  $('#bKemLoat').hidden=!has('sua');$('#bSheet').hidden=!(on&&isAdmin()&&CFG.sheetUrl);if(CFG.sheetUrl)$('#bSheet').href=CFG.sheetUrl;
 }
 function showLogin(msg){if(msg)$('#loginMsg').textContent=msg;topBar();if(!$('#dLogin').open)$('#dLogin').showModal()}
 $('#dLogin').addEventListener('close',async()=>{
@@ -886,6 +911,31 @@ async function openLog(r){
     $('#dLog').open||$('#dLog').showModal()}catch(e){toast(e.message)}
 }
 $('#bLog').onclick=()=>openLog(null);$('#lDong').onclick=()=>$('#dLog').close();
+
+/* ================================================================
+   12. BỔ SUNG: sắp xếp, link dự án, cấu hình chung, tự đọc lại, đính kèm hàng loạt
+   ================================================================ */
+$('#tMain').addEventListener('click',e=>{const b=e.target.closest('[data-sort]');if(!b)return;const k=b.dataset.sort;if(sortK===k)sortD=-sortD;else{sortK=k;sortD=1}list()});
+$('#iCopy').onclick=async()=>{$('#linkDA').select();try{await navigator.clipboard.writeText($('#linkDA').value);toast('Đã chép link dự án')}catch(e){toast('Bôi đen ô link rồi Ctrl+C')}};
+/* có thay đổi ở máy khác thì tự đọc lại (hỏi máy chủ mỗi 60 giây, chỉ khi đang mở trang & không mở hộp nhập) */
+setInterval(async()=>{
+  if(!CFG.api||!ME||document.hidden||document.querySelector('dialog[open]'))return;
+  try{const j=await api('ping');if(VER===null)VER=j.v;else if(j.v!==VER){VER=j.v;await load(true);toast('Đã cập nhật thay đổi mới')}}catch(e){}
+},60000);
+/* đính kèm hàng loạt: chọn nhiều file .docx hoặc 1 file .zip; ghép hộ theo STT trong tên file (TBTHD_STT008_… / STT8 / 008_…) */
+$('#bKemLoat').onclick=async()=>{
+  fileX.value='';fileX.accept='.docx,.zip';fileX.multiple=true;
+  const fs=await new Promise(ok=>{fileX.onchange=()=>ok([...fileX.files]);fileX.click()});if(!fs.length)return;
+  const list=[];
+  for(const f of fs){if(/\.zip$/i.test(f.name)){await need('jszip');const z=await JSZip.loadAsync(await f.arrayBuffer());for(const n of Object.keys(z.files))if(/\.docx$/i.test(n)&&!z.files[n].dir)list.push({name:n.split('/').pop(),get:()=>z.files[n].async('arraybuffer')})}else list.push({name:f.name,get:()=>f.arrayBuffer()})}
+  const sttOf=n=>{const m=n.match(/STT[_\s-]*0*(\d+)/i)||n.match(/^0*(\d+)[_\s.-]/);return m?String(+m[1]):''};
+  const ok=[],bo=[];
+  for(const it of list){const st=sttOf(it.name),r=st&&D.find(x=>String(+x.stt)===st);if(r&&canRow(r))ok.push([it,r]);else bo.push(it.name+(st?(r?' (ngoài phạm vi)':' (không có STT '+st+')'):' (tên file không có STT)'))}
+  if(!ok.length)return toast('Không ghép được file nào với hộ: '+bo.slice(0,3).join('; '));
+  if(!await hoi(`Đính kèm ${ok.length} file vào đúng hộ theo STT${bo.length?`; bỏ qua ${bo.length} file: `+bo.slice(0,4).join('; ')+(bo.length>4?'…':''):''}. File cũ của hộ (nếu có) bị thay.`))return;
+  let n=0;for(const [it,r] of ok){try{await putTB(r,await it.get(),it.name,true);n++;toast(`Đang đính kèm ${n}/${ok.length}…`)}catch(e){toast('Lỗi STT '+r.stt+': '+e.message)}}
+  if(CFG.api)await load(true);else render();toast(`Đã đính kèm ${n} thông báo`);
+};
 
 route();load();
 }

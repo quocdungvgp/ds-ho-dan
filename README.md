@@ -2,7 +2,6 @@
 
 **Trang web:** https://quocdungvgp.github.io/ds-ho-dan/
 
-
 ## Các file
 | File | Dùng để |
 |---|---|
@@ -36,6 +35,21 @@ Quản trị bấm **👥 Người dùng** → thêm tài khoản: tên đăng n
 Máy chủ kiểm quyền ở mọi yêu cầu, sai mật khẩu 5 lần khóa 15 phút, mật khẩu lưu dạng mã hóa có muối, phiên đăng nhập 6 giờ.
 Mọi thao tác ghi vào tab **NhatKy** (nút 📜 Nhật ký; nút “Lịch sử” trên từng hộ).
 Lưu ý: người mở thẳng file Google Sheet vẫn sửa được mọi thứ — chỉ chia sẻ Sheet cho quản trị.
+
+## Link dự án (gửi anh em)
+Quản trị mở ⚙ Cấu hình → ô **Link dự án** → *Chép* → gửi qua Zalo. Ai bấm link là trang tự nối đúng Google Sheet của dự án đó, chỉ còn đăng nhập. Link không chứa mật khẩu.
+Tên dự án, tên đơn vị, đuôi mã hồ sơ, ngưỡng DT còn lại: quản trị sửa trong ⚙ Cấu hình là áp dụng cho mọi người của dự án.
+
+## Tiện ích khác
+- **Đính kèm hàng loạt** (quyền Sửa trở lên): chọn nhiều file .docx hoặc 1 file .zip; trang ghép hộ theo STT trong tên file (`TBTHD_STT008_…`, `STT8…`, `008_…`), báo trước file nào không ghép được.
+- **Tự cập nhật**: máy khác sửa thì trong vòng 1 phút trang đang mở tự đọc lại.
+- **Sắp xếp**: bấm tiêu đề cột STT, Mã, Cán bộ, Họ tên, Địa chỉ, Tổ, Tờ·Thửa, DT ở bảng Theo hộ.
+- **Nhập Excel thay toàn bộ**: hộ trùng STT + họ tên giữ nguyên mã hồ sơ, thông báo đã đính kèm, cán bộ thụ lý.
+- **Mã hồ sơ** cấp ở máy chủ, không trùng khi nhiều người mở cùng lúc.
+- Bản đồ vẽ bằng canvas, nhãn chỉ hiện thửa trong khung nhìn — bản vẽ vài nghìn thửa vẫn mượt.
+
+## Cập nhật Code.gs khi có bản mới
+Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 
 ## 2. Bản đồ thửa
 1. AutoCAD: bản vẽ ở tọa độ VN2000 thật (TP.HCM: X ≈ 600 000, Y ≈ 1 190 000). SAVEAS → DXF 2013.
