@@ -38,6 +38,19 @@ async def main():
         await pg.click('#tMain [data-a=tao] >> nth=0'); await pg.wait_for_timeout(2500)
         await pg.click('#tMain [data-a=xem] >> nth=0'); await pg.wait_for_timeout(2500)
         ok('Ông/Bà' in await pg.inner_text('#xemBody'), 'tạo TB theo mẫu + xem trước'); await pg.click('#xemDong')
+        # nhiều mẫu văn bản
+        async with pg.expect_file_chooser() as fc:
+            await pg.click('#bCfg'); await pg.click('#iMauVB')
+        await (await fc.value).set_files(f'{FX}/mau_vb.docx'); await pg.wait_for_timeout(500)
+        ok(await pg.input_value('dialog[open] input') == 'mau_vb', 'nạp mẫu văn bản: hỏi tên, gợi ý theo tên file')
+        await pg.fill('dialog[open] input', 'Phiếu chi'); await pg.click('dialog[open] button[value=ok]'); await pg.wait_for_timeout(600)
+        await pg.click('#tMain tbody tr:nth-child(1) [data-a=vb]'); await pg.wait_for_timeout(200)
+        async with pg.expect_download() as d: await pg.click('#vbTao')
+        dl = await d.value; xp2 = '/tmp/_vb.docx'; await dl.save_as(xp2); t = re.sub(r'<[^>]+>', '', zipfile.ZipFile(xp2).read('word/document.xml').decode())
+        ok(dl.suggested_filename.startswith('phieu_chi_STT001') and 'Ông/Bà Nguyễn Văn An' in t and '1.700.000.000' in t and 'Một tỷ bảy trăm triệu đồng' in t and '01/09/2026' in t, 'tạo văn bản 1 hộ: họ tên, tiền, tiền bằng chữ, ngày kiểm đếm')
+        await pg.click('#bVB'); await pg.wait_for_timeout(200)
+        async with pg.expect_download() as d: await pg.click('#vbTao')
+        dl = await d.value; xp3 = '/tmp/_vb.zip'; await dl.save_as(xp3); ok(len(zipfile.ZipFile(xp3).namelist()) == 24, 'tạo văn bản hàng loạt → zip 24 hộ')
         # Word tự sửa theo web
         await pg.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await pg.click('#fm button[value=cancel]')
         async with pg.expect_file_chooser() as fc: await pg.click('#tMain tbody tr:nth-child(1) [data-a=kem]')

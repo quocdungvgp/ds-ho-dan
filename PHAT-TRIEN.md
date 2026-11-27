@@ -40,7 +40,8 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
 | 4b. DỮ LIỆU MẪU | `sample() sampleMap()` | |
 | 5. LỌC & SỐ LIỆU | `st` (bộ lọc), `PARCEL`, `conLai()`, `filtered()`, đề nghị `CHO choOf virtRows choHtml`; **tiến độ GPMB** `GD GD_COL gdIdx gdOf gdNgay gdMatch gdCell renderGd()` | `gdIdx(r)` = bước đã xong (−1…6) |
 | 6. VẼ DANH SÁCH | `render()` (thẻ số, bảng tổ, chip, ô lọc) `tbCell() list() sortRows()` | |
-| 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`TB_FLD docFix()`** tự sửa Word theo web, `dongBo() zipTB hoi()` | |
+| 7. THÔNG BÁO WORD | `attach xem taoTB taoLoat`, **`TB_FLD docFix()`** tự sửa Word theo web, `dongBo() zipTB hoi(msg,nhãn,mặcĐịnh)` | |
+| 7b. NHIỀU MẪU VĂN BẢN | `truong(r)` bộ trường chung (cả mẫu TB), `TRUONG_DS`, `docSo()` số→chữ, `dien(mau,r)`, `MAUVB loadMauVB getMauVB putMauVB delMauVB moVB taoVB` | thêm trường: sửa `truong()` + `TRUONG_DS` |
 | 8. EXCEL | `COLS` (khóa, tiêu đề, regex nhận cột; `gdn_<bước>` = cột ngày ảo), `colVal()` giá trị xuất, `importXls exportXls` | |
 | 9. BẢN ĐỒ | `initMap CLS(tô màu: tb to gt cl anh gd) drawMap labels pickParcel suggest meas* exportKML`, `HO_IDX hoOf` | |
 | 10. SỰ KIỆN | `route()` (#ds/#bando), click `data-a=…`, hộp sửa hộ, cấu hình | |
@@ -76,7 +77,8 @@ Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nh�
 | me, logout, changePw, list, ping, getFile, getMap, getMau | đăng nhập | `list` trả `rows, cho, me, cfg, sheetUrl`; `getFile` chỉ file đang gắn hộ/đề nghị |
 | upsert, delete, uploadTB(kind tb/ht), delTB, delHT | denghi+ (trong phạm vi tổ) | quyền `denghi` → thành đề nghị (`propose_`) |
 | bulk, capMa | sua+ | |
-| replaceAll, approve, reject, users, userSave, userDel, putMap, putMau, putCfg, log | quantri | |
+| mauDS, getMauVB | đăng nhập | mẫu văn bản khác: ScriptProperties `mau_vb`=[{ten,id}] |
+| replaceAll, approve, reject, users, userSave, userDel, putMap, putMau, putMauVB, delMauVB, putCfg, log | quantri | |
 | withdraw | người gửi | |
 
 Hàm chạy tay/trigger: `caiDat()` (tạo tab, cột), `caiTuDong()` (cài trigger `saoLuu` 1 giờ sáng + `guiBaoDeNghi` 15 phút). `list_()` nhớ trong `MEMO_` suốt 1 yêu cầu, mọi chỗ ghi Sheet đặt `MEMO_ = null`.
@@ -92,7 +94,7 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **42/42 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **46/46 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
 Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy).
 
@@ -107,7 +109,7 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 ### Ưu tiên 1
 1. ~~**Tiến độ GPMB theo giai đoạn**~~ — **XONG 27/11/2026** (xem mục 3 + Nhật ký làm). Còn có thể làm thêm: hạn riêng từng bước (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`); mở rộng tới 23 giai đoạn như thẻ của Ban nếu cần (chỉ sửa mảng `GD`).
 2. ~~**Tiền bồi thường – hỗ trợ – TĐC & chi trả**~~ — **XONG 27/11/2026**. Ngày chi dùng chung ngày bước “Chi trả”, không thêm cột `ngay_chi`.
-3. **Nhiều mẫu văn bản** (giấy mời, TB kiểm đếm, biên bản, phiếu chi…) thay vì 1 mẫu TB: lưu `mau/<tên>.docx` trên Drive (`putMau` thêm tên), nút “Tạo văn bản” chọn mẫu, dùng chung trường «HOTEN» «DT» «THUA»… + thêm trường tiền, ngày. Tạo hàng loạt → zip.
+3. ~~**Nhiều mẫu văn bản**~~ — **XONG**: mẫu TB thu hồi giữ nguyên (gắn vào hộ); mẫu khác tạo ra thì **tải về** (1 hộ = .docx, nhiều hộ = zip), không gắn vào hộ.
 4. **QR mã hồ sơ**: in nhãn bìa hồ sơ (QR = link `#ho=<id>` mở đúng hộ), quét QR bằng camera điện thoại (thư viện qrcode-generator + jsQR). Ban đang dùng “QR hồ sơ / Quét QR”.
 5. **Chụp ảnh hiện trạng thẳng bằng điện thoại**: `<input type=file accept=image/* capture=environment multiple>`, gắn giờ + GPS lên ảnh, gộp thành PDF (jsPDF) rồi dùng luồng `attachHT` sẵn có.
 6. ~~**Sao lưu tự động**~~ — **XONG**: `caiTuDong()` → `saoLuu()` mỗi đêm, thư mục “Sao lưu”, giữ `SAO_LUU_GIU`=30.
@@ -153,3 +155,9 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 ### 27/11/2026 — Máy chủ: sao lưu, email đề nghị, phiên dài, đọc Sheet 1 lần (mục 7.6, 7.7 + kỹ thuật)
 - `Code.gs`: hằng `PHIEN_GIO=72 EMAIL_QT SAO_LUU_GIU`; `caiTuDong() saoLuu() guiBaoDeNghi() emailQT_()`; token lưu ScriptProperties; `MEMO_`.
 - **Người dùng phải**: dán Code.gs mới → Phiên bản mới → chạy `caiTuDong()` 1 lần (cho phép quyền Drive + Gmail). `saoLuu` chưa thử được trên máy giả lập (cần Drive thật).
+
+### 27/11/2026 — Nhiều mẫu văn bản (mục 7.3)
+- Section 7b mới. Nút hero **📄 Tạo văn bản (theo mẫu)** (các hộ đang lọc → zip) + nút **📄 Văn bản** trên dòng hộ; ⚙ Cấu hình: **Nạp mẫu văn bản khác**, danh sách mẫu có ✕ xóa (quản trị).
+- Trường mới: «TO_NVBT CANBO GIAITOA GHICHU TIEN_BT TIEN_HT TIEN_TDC TONG TONG_CHU DA_CHI DA_CHI_CHU CON_LAI GIAIDOAN NGAY_KD…NGAY_BG DUAN DONVI HOM_NAY HAN_BG».
+  `docSo()` đọc số kiểu “Một nghìn năm trăm tỷ”, “Một triệu không trăm linh năm nghìn”. Nạp mẫu có thử `dien()` trước → báo lỗi trường hỏng.
+- `Code.gs`: action `mauDS getMauVB putMauVB delMauVB` → dán Code.gs mới + Phiên bản mới (không cần `caiDat`).

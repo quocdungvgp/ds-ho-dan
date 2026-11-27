@@ -115,6 +115,16 @@ function route_(me, q) {
     /* ---- quản trị ---- */
     case 'putMap': need_(me, 'quantri'); saveFile_('bando.json', Utilities.newBlob(JSON.stringify(q.map), 'application/json', 'bando.json')); log_(me, 'nạp bản vẽ', '', (q.map.thua || []).length + ' thửa'); return { ok: true };
     case 'putMau': need_(me, 'quantri'); saveFile_('mau-thong-bao.docx', Utilities.newBlob(Utilities.base64Decode(q.b64), null, 'mau-thong-bao.docx')); log_(me, 'nạp mẫu thông báo', '', ''); return { ok: true };
+    /* ---- nhiều mẫu văn bản: danh sách {ten,id} trong ScriptProperties 'mau_vb' ---- */
+    case 'mauDS': return { ok: true, ds: mauVb_().map(m => ({ ten: m.ten })) };
+    case 'getMauVB': { const m = mauVb_().find(x => x.ten === q.ten); if (!m) return { ok: false, error: 'Không thấy mẫu ' + q.ten }; return { ok: true, b64: Utilities.base64Encode(DriveApp.getFileById(m.id).getBlob().getBytes()) }; }
+    case 'putMauVB': { need_(me, 'quantri'); const ten = String(q.ten || '').trim().slice(0, 80); if (!ten) return { ok: false, error: 'Thiếu tên mẫu' };
+      const ds = mauVb_(), cu = ds.find(x => x.ten === ten); if (cu) { try { DriveApp.getFileById(cu.id).setTrashed(true); } catch (e) {} }
+      const f = folder_().createFile(Utilities.newBlob(Utilities.base64Decode(q.b64), null, 'mau-vb — ' + ten + '.docx'));
+      const moi = ds.filter(x => x.ten !== ten).concat([{ ten, id: f.getId() }]); PropertiesService.getScriptProperties().setProperty('mau_vb', JSON.stringify(moi));
+      log_(me, 'nạp mẫu văn bản', '', ten); return { ok: true }; }
+    case 'delMauVB': { need_(me, 'quantri'); const ds = mauVb_(), cu = ds.find(x => x.ten === q.ten); if (cu) { try { DriveApp.getFileById(cu.id).setTrashed(true); } catch (e) {} }
+      PropertiesService.getScriptProperties().setProperty('mau_vb', JSON.stringify(ds.filter(x => x.ten !== q.ten))); log_(me, 'xóa mẫu văn bản', '', q.ten); return { ok: true }; }
     case 'users': need_(me, 'quantri'); return { ok: true, users: users_().map(pub_) };
     case 'userSave': need_(me, 'quantri'); return userSave_(me, q.u);
     case 'userDel': need_(me, 'quantri'); return userDel_(me, q.ten);
@@ -374,6 +384,7 @@ function nhatKy_(hoId) {
     .filter(r => !hoId || String(r[3]) === String(hoId)).slice(-300).reverse()
     .map(r => ({ at: val2_(r[0]), by: String(r[1]), viec: String(r[2]), hoId: String(r[3]), ct: String(r[4]) }));
 }
+function mauVb_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('mau_vb') || '[]'); } catch (e) { return []; } }
 function folder_() { return THU_MUC_ID ? DriveApp.getFolderById(THU_MUC_ID) : DriveApp.getRootFolder(); }
 function file_(name) { const it = folder_().getFilesByName(name); return it.hasNext() ? it.next() : null; }
 function saveFile_(name, blob) { const f = file_(name); if (f) f.setTrashed(true); folder_().createFile(blob.setName(name)); }

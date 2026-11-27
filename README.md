@@ -68,6 +68,11 @@ Khung **Kinh phí…**: tổng kinh phí phương án, đã chi, còn phải chi
 ## Sao lưu & báo đề nghị qua email (quản trị, 1 lần)
 Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm 1 giờ sáng chép file Sheet vào thư mục *Sao lưu* (giữ 30 bản gần nhất); có đề nghị chờ duyệt thì 15 phút gom gửi 1 email cho quản trị (đổi người nhận ở `EMAIL_QT` đầu Code.gs). Phiên đăng nhập nay giữ 3 ngày (`PHIEN_GIO`).
 
+## Nhiều mẫu văn bản (giấy mời, biên bản, phiếu chi…)
+- Quản trị: ⚙ Cấu hình → **⇪ Nạp mẫu văn bản khác (.docx)** → đặt tên mẫu. Nạp lại cùng tên = thay mẫu. Bấm ✕ cạnh tên để xóa.
+- Trong file Word gõ trường kèm « »: «HOTEN» «DIACHI» «THUA» «TO» «DT» «TONG» «TONG_CHU» (tiền bằng chữ) «NGAY_KD» (ngày kiểm đếm)… — danh sách đủ hiện trong hộp *Tạo văn bản*.
+- Dùng: nút **📄 Văn bản** trên dòng hộ (1 file Word), hoặc **📄 Tạo văn bản (theo mẫu)** trên đầu trang = mọi hộ đang lọc → file zip. Văn bản tải về máy, không gắn vào hộ.
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 

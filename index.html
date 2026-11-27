@@ -165,6 +165,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <button class="btn" id="bAdd">＋ Thêm hộ</button>
       <button class="btn" id="bTaoLoat">✎ Tạo TB hàng loạt</button>
       <button class="btn" id="bZip">⇩ Tải TB (zip)</button>
+      <button class="btn" id="bVB">📄 Tạo văn bản (theo mẫu)</button>
       <button class="btn" id="bXls">⇩ Xuất Excel</button>
       <button class="btn" id="bPrint">⎙ In danh sách</button>
       <button class="btn" id="bKemLoat" hidden>⇪ Đính kèm hàng loạt</button>
@@ -291,16 +292,25 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     <button type="button" class="btn sm" id="iXls">⇪ Nhập danh sách từ Excel</button>
     <button type="button" class="btn sm" id="iMap">⇪ Nạp bản vẽ (bando.json)</button>
     <button type="button" class="btn sm" id="iMau">⇪ Nạp mẫu TB (.docx)</button>
+    <button type="button" class="btn sm" id="iMauVB">⇪ Nạp mẫu văn bản khác (.docx)</button>
     <button type="button" class="btn sm" id="iMauXls">⇩ Tải file Excel mẫu</button>
     <button type="button" class="btn sm" id="iReset">Xóa dữ liệu trên máy</button>
   </div>
   <div class="full" id="linkBox" hidden><label>Link dự án — gửi anh em, mở là tự nối đúng dự án (không chứa mật khẩu)</label><div class="row" style="flex-wrap:nowrap"><input id="linkDA" readonly><button type="button" class="btn sm" id="iCopy">Chép</button></div>
   </div>
+  <div class="full" id="mauVbBox"></div>
   <p class="full note" id="cfgStat"></p>
   <div class="row"><button class="btn" value="cancel" formnovalidate>Đóng</button><button class="btn pri" value="ok">Lưu cấu hình</button></div>
 </form></dialog>
 <input type="file" id="fileX" hidden>
 
+<!-- tạo văn bản theo mẫu -->
+<dialog id="dVB"><form class="fm" method="dialog" onsubmit="return false">
+  <h3 id="vbT">Tạo văn bản</h3>
+  <div class="full"><label>Chọn mẫu</label><select id="vbMau"></select></div>
+  <p class="full note">Trường dùng được trong mẫu Word (gõ kèm dấu « »): <span id="vbTruong"></span></p>
+  <div class="row"><button type="button" class="btn" id="vbHuy">Hủy</button><button type="button" class="btn pri" id="vbTao">Tạo &amp; tải về</button></div>
+</form></dialog>
 <!-- xem trước Word -->
 <dialog id="dXem" class="wide"><div class="dh"><h3 id="xemT"></h3><div class="row"><button class="btn sm" id="xemTai">⇩ Tải Word</button><button class="btn sm" id="xemDong">Đóng</button></div></div><div id="xemBody"></div></dialog>
 <!-- đăng nhập -->
@@ -426,6 +436,7 @@ async function load(nhe){
     MAP=await loadMap();
     MAU=null;
     if(CFG.api){if(ME){try{const j=await api('getMau');if(j.b64)MAU=b64ToBuf(j.b64)}catch(e){}}}else MAU=await idb.get('mau');
+    await loadMauVB();
   }
   await capMa();
   render();
@@ -635,7 +646,7 @@ function render(){
   opts('#fP','Mọi phường',D.map(r=>r.phuong),st.p);opts('#fKp','Mọi khu phố',D.map(r=>r.kp),st.kp);opts('#fTbd','Mọi tờ',D.map(r=>r.to_bd),st.tbd);
   for(const [id,k] of [['#fDt','dt'],['#fCl','cl'],['#fAnh','anh'],['#fGt','gt'],['#fGd','gd'],['#fCt','ct']])$(id).value=st[k];
   $('#dlCb').innerHTML=[...new Set(D.map(r=>r.canbo).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
-  $('#bTaoLoat').hidden=!MAU||!has('denghi');$('#bAdd').hidden=!has('denghi');
+  $('#bTaoLoat').hidden=!MAU||!has('denghi');$('#bVB').hidden=!MAUVB.length;$('#bAdd').hidden=!has('denghi');
   topBar();
   $('#footNote').textContent=`Tờ/thửa trong danh sách ghép với bản vẽ theo "tờ/thửa". DT còn lại = DT thửa trên bản vẽ − DT thu hồi của các hộ trên thửa (hộ toàn phần không tính). Bản vẽ: ${MAP?MAP._src:'chưa có'}. Thông tin hộ dân chỉ dùng nội bộ — không chụp gửi ra ngoài.`;
   list();
@@ -663,7 +674,7 @@ function list(){
     const sh=(k,l,c='')=>`<th class="${c}"><button class="lk" data-sort="${k}" style="text-decoration:none">${l}${sortK===k?(sortD>0?' ▲':' ▼'):''}</button></th>`;
     h='<tr>'+sh('stt','STT')+sh('ma','Mã số hồ sơ')+sh('canbo','Cán bộ thụ lý')+sh('ten','Họ và tên')+sh('diachi','Địa chỉ thu hồi')+'<th>P · KP</th>'+sh('to','Tổ')+sh('thua','Tờ · Thửa')+sh('dt','DT thu hồi (m²)','n')+sh('gd','Giải tỏa · Tiến độ')+'<th>Thông báo thu hồi đất</th></tr>';
     body=R.map(r=>{const cl=conLai(r);return`<tr><td>${esc(r.stt)}</td><td>${r.ma?`<span class="code">${esc(r.ma)}</span>`:'<span class="note">chưa cấp mã</span>'}</td><td>${r.canbo?esc(r.canbo):'<span class="warn note">chưa có</span>'}</td>
-      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📷 Ảnh HT (PDF)</button>`}<button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
+      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📷 Ảnh HT (PDF)</button>`}<button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${MAUVB.length?`<div class="act noprint"><button data-a="vb" data-id="${esc(r.id)}">📄 Văn bản</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
       <td style="white-space:nowrap"><button class="lk" data-a="map" data-id="${esc(r.id)}" title="Xem trên bản đồ">Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)}</button></td>
       <td class="n">${num(r.dt)?f1(num(r.dt)):'<span class="warn">cần bổ sung</span>'}${cl.v!==undefined?`<div class="note ${cl.k==='duoi'?'warn':''}">còn lại ${f1(cl.v)} m²</div>`:''}</td>
@@ -699,11 +710,7 @@ const thieuTB=r=>[!r.ten&&'họ tên',!r.thua&&'số thửa',!r.to_bd&&'số t�
 async function taoTB(r,silent,quiet){
   const t=thieuTB(r);if(t.length){if(!silent)toast('Chưa đủ thông tin — thiếu: '+t.join(', '));return false}
   await need('pizzip','dt');
-  const ten=String(r.ten).trim().replace(/^(Ông\/Bà|Ông|Bà)\s+/i,'');
-  const data={STT:r.stt,MA:r.ma,HOTEN:ORG.test(ten)?ten:'Ông/Bà '+ten,TEN:ten,DT:f1(num(r.dt)),MUC:mucTB(r),THUA:r.thua,TO:r.to_bd,DIACHI:r.diachi,PHUONG:r.phuong,KP:r.kp,SOTB:r.tb_so||'',NGAY:r.tb_ngay?new Date(r.tb_ngay).toLocaleDateString('vi-VN'):''};
-  const doc=new window.docxtemplater(new PizZip(MAU),{paragraphLoop:true,linebreaks:true,delimiters:{start:'«',end:'»'},nullGetter:()=>''});
-  doc.render(data);
-  const buf=doc.getZip().generate({type:'arraybuffer',mimeType:DOCX});
+  const buf=dien(MAU,r);
   await putTB(r,buf,tbName(r),quiet);return true;
 }
 async function taoLoat(){
@@ -766,7 +773,80 @@ async function zipTB(){
   download(await z.generateAsync({type:'blob'}),'ThongBao_THD_'+n+'_ho.zip');
 }
 /* hộp hỏi xác nhận trong trang (confirm() bị chặn ở vài trình xem) */
-function hoi(msg,inputLabel){return new Promise(ok=>{const d=document.createElement('dialog');d.innerHTML=`<form class="fm" method="dialog"><h3 style="font-size:15px">${esc(msg)}</h3>${inputLabel?`<div class="full"><label>${esc(inputLabel)}</label><input name="v"></div>`:''}<div class="row"><button class="btn" value="no" formnovalidate>Không</button><button class="btn pri" value="ok">Đồng ý</button></div></form>`;document.body.append(d);d.addEventListener('close',()=>{ok(d.returnValue==='ok'?(inputLabel?d.querySelector('input').value:true):false);d.remove()});d.showModal()})}
+function hoi(msg,inputLabel,def=''){return new Promise(ok=>{const d=document.createElement('dialog');d.innerHTML=`<form class="fm" method="dialog"><h3 style="font-size:15px">${esc(msg)}</h3>${inputLabel?`<div class="full"><label>${esc(inputLabel)}</label><input name="v" value="${esc(def)}"></div>`:''}<div class="row"><button class="btn" value="no" formnovalidate>Không</button><button class="btn pri" value="ok">Đồng ý</button></div></form>`;document.body.append(d);d.addEventListener('close',()=>{ok(d.returnValue==='ok'?(inputLabel?d.querySelector('input').value:true):false);d.remove()});d.showModal()})}
+
+/* ================================================================
+   7b. NHIỀU MẪU VĂN BẢN (giấy mời, TB kiểm đếm, biên bản, phiếu chi…)
+   Mẫu .docx có «TRƯỜNG». Lưu: Drive (mau-vb: ScriptProperties 'mau_vb' = [{ten,id}]) hoặc IndexedDB 'mauvb' {ten: buf}.
+   Văn bản tạo ra được TẢI VỀ (không gắn vào hộ — chỉ thông báo thu hồi mới gắn). Nhiều hộ → zip.
+   ================================================================ */
+const SO=['không','một','hai','ba','bốn','năm','sáu','bảy','tám','chín'];
+function doc3(n,du){const t=Math.floor(n/100),c=Math.floor(n%100/10),d=n%10,o=[];
+  if(t||du)o.push(SO[t]+' trăm');
+  if(c>1)o.push(SO[c]+' mươi');else if(c===1)o.push('mười');else if(d&&(t||du))o.push('linh');
+  if(d)o.push(d===1&&c>1?'mốt':d===5&&c?'lăm':d===4&&c>1?'tư':SO[d]);return o.join(' ')}
+/* số → chữ: 1.250.000 → "Một triệu hai trăm năm mươi nghìn đồng" */
+function docSo(v,dv=' đồng'){
+  const duoi=(n,du)=>{const g=[Math.floor(n/1e6),Math.floor(n%1e6/1e3),n%1e3],U=[' triệu',' nghìn',''],o=[];let co=du;
+    g.forEach((x,i)=>{if(x){o.push(doc3(x,co)+U[i]);co=true}else if(co&&g.slice(i+1).some(Boolean)&&i===2)co=true});return o.join(' ')};
+  const doc=n=>n>=1e9?doc(Math.floor(n/1e9))+' tỷ'+(n%1e9?' '+duoi(n%1e9,true):''):duoi(n,false);
+  const n=Math.round(Math.abs(+v||0));if(!n)return 'Không'+dv;const s=doc(n).replace(/\s+/g,' ').trim();return s[0].toUpperCase()+s.slice(1)+dv}
+/* bộ trường dùng chung cho mọi mẫu (cả mẫu thông báo thu hồi) */
+function truong(r){
+  const ten=String(r.ten||'').trim().replace(/^(Ông\/Bà|Ông|Bà)\s+/i,''),n=gdNgay(r),t=tongPA(r),c=tien(r.da_chi);
+  const o={STT:r.stt,MA:r.ma,HOTEN:ORG.test(ten)?ten:'Ông/Bà '+ten,TEN:ten,DT:f1(num(r.dt)),MUC:mucTB(r),THUA:r.thua,TO:r.to_bd,DIACHI:r.diachi,PHUONG:r.phuong,KP:r.kp,
+    SOTB:r.tb_so||'',NGAY:r.tb_ngay?dVN(r.tb_ngay):'',TO_NVBT:r.to||'',CANBO:r.canbo||'',GIAITOA:r.giaitoa||'',GHICHU:r.ghichu||'',
+    TIEN_BT:fT(tien(r.tien_bt)),TIEN_HT:fT(tien(r.tien_ht)),TIEN_TDC:fT(tien(r.tien_tdc)),TONG:fT(t),TONG_CHU:docSo(t),DA_CHI:fT(c),DA_CHI_CHU:docSo(c),CON_LAI:fT(Math.max(0,t-c)),
+    GIAIDOAN:gdTen(gdIdx(r)),DUAN:CFG.duAn,DONVI:CFG.donVi,HOM_NAY:dVN(new Date().toISOString()),HAN_BG:CFG.hanBG?dVN(CFG.hanBG):''};
+  for(const [k] of GD)o['NGAY_'+k.toUpperCase()]=n[k]?dVN(n[k]):'';
+  return o;
+}
+const TRUONG_DS='«HOTEN» «TEN» «STT» «MA» «DIACHI» «PHUONG» «KP» «TO» «THUA» «DT» «MUC» «GIAITOA» «TO_NVBT» «CANBO» «SOTB» «NGAY» «GHICHU» «TIEN_BT» «TIEN_HT» «TIEN_TDC» «TONG» «TONG_CHU» «DA_CHI» «DA_CHI_CHU» «CON_LAI» «GIAIDOAN» '+GD.map(([k])=>'«NGAY_'+k.toUpperCase()+'»').join(' ')+' «DUAN» «DONVI» «HOM_NAY» «HAN_BG»';
+function dien(mau,r){
+  const doc=new window.docxtemplater(new PizZip(mau),{paragraphLoop:true,linebreaks:true,delimiters:{start:'«',end:'»'},nullGetter:()=>''});
+  doc.render(truong(r));return doc.getZip().generate({type:'arraybuffer',mimeType:DOCX});
+}
+let MAUVB=[];   // [{ten,id?}] — nội dung nạp khi cần
+const mauVbKey=t=>'mauvb:'+t;
+async function loadMauVB(){
+  if(CFG.api){if(!ME){MAUVB=[];return}try{MAUVB=(await api('mauDS')).ds||[]}catch(e){MAUVB=[]}}
+  else MAUVB=((await idb.get('mauvb_ds'))||[]).map(ten=>({ten}));
+}
+async function getMauVB(ten){
+  if(CFG.api)return b64ToBuf((await api('getMauVB',{ten})).b64);
+  return await idb.get(mauVbKey(ten));
+}
+async function putMauVB(){
+  const f=await pickFile('.docx');if(!f)return;
+  const ten=await hoi('Tên mẫu (hiện trong danh sách chọn mẫu, tên file khi tải)','Tên mẫu',f.name.replace(/\.docx$/i,''));if(!ten||!String(ten).trim())return;
+  const t=String(ten).trim(),buf=await f.arrayBuffer();
+  try{await need('pizzip','dt');dien(buf,{ten:'Thử'})}catch(e){return toast('Mẫu lỗi trường «…»: '+(e.properties?.errors?.[0]?.properties?.explanation||e.message))}
+  if(CFG.api)await api('putMauVB',{ten:t,b64:bufToB64(buf)});
+  else{await idb.set(mauVbKey(t),buf);const ds=(await idb.get('mauvb_ds'))||[];if(!ds.includes(t))ds.push(t);await idb.set('mauvb_ds',ds)}
+  await loadMauVB();toast('Đã nạp mẫu “'+t+'”');render();
+}
+async function delMauVB(t){
+  if(!await hoi(`Xóa mẫu “${t}”?`))return;
+  if(CFG.api)await api('delMauVB',{ten:t});else{await idb.del(mauVbKey(t));await idb.set('mauvb_ds',((await idb.get('mauvb_ds'))||[]).filter(x=>x!==t))}
+  await loadMauVB();toast('Đã xóa mẫu');render();$('#bCfg').click();
+}
+const vbName=(t,r)=>fold(t).replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')+'_STT'+String(r.stt||'').padStart(3,'0')+'_'+fold(r.ten).replace(/[^a-z0-9]+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase())+'.docx';
+/* hộp chọn mẫu: r = 1 hộ, hoặc null = các hộ đang lọc */
+async function moVB(r){
+  if(!MAUVB.length)return toast(isAdmin()?'Chưa có mẫu văn bản — nạp ở ⚙ Cấu hình → “Nạp mẫu văn bản”':'Chưa có mẫu văn bản — nhờ quản trị nạp');
+  const R=r?[r]:filtered();if(!R.length)return toast('Không có hộ nào trong bộ lọc');
+  $('#vbT').textContent=r?'Tạo văn bản – '+r.ten:`Tạo văn bản cho ${R.length} hộ đang lọc (tải về file zip)`;
+  $('#vbMau').innerHTML=MAUVB.map(m=>`<option>${esc(m.ten)}</option>`).join('');$('#vbTruong').textContent=TRUONG_DS;
+  const d=$('#dVB');d._R=R;d.showModal();
+}
+async function taoVB(){
+  const d=$('#dVB'),R=d._R,t=$('#vbMau').value;d.close();
+  try{toast('Đang tạo…');await need('pizzip','dt');const mau=await getMauVB(t);if(!mau)throw new Error('không đọc được mẫu');
+    if(R.length===1){download(new Blob([dien(mau,R[0])],{type:DOCX}),vbName(t,R[0]));return}
+    await need('jszip');const z=new JSZip();R.forEach(r=>z.file(vbName(t,r),dien(mau,r)));
+    download(await z.generateAsync({type:'blob'}),fold(t).replace(/[^a-z0-9]+/g,'_')+'_'+R.length+'_ho.zip');toast(`Đã tạo ${R.length} văn bản`)}
+  catch(e){toast('Lỗi tạo văn bản: '+e.message)}
+}
 
 /* ================================================================
    8. NHẬP / XUẤT EXCEL
@@ -944,6 +1024,7 @@ document.addEventListener('click',async e=>{
     else if(a==='tai'){const raw=await getTB(r);if(raw){const fx=await docFix(raw,r);download(new Blob([fx.buf],{type:DOCX}),r.tb_ten||tbName(r));if(fx.ch.length)toast('Đã tải, đã sửa theo web: '+fx.ch.map(c=>c.lb+' '+c.cu+' → '+c.moi).join('; '))}}
     else if(a==='xem')xem(r);
     else if(a==='tao'){toast('Đang tạo…');await taoTB(r)}
+    else if(a==='vb')await moVB(r);
     else if(a==='ht'){if(r.ht_file)openAnh(r);else if(r.ht)window.open(r.ht,'_blank','noopener');else toast(`Hộ có ${r.anh} ảnh — chưa đính kèm PDF hay link hồ sơ hiện trạng`)}
     else if(a==='kemht')attachHT(r);
     else if(a==='map'){const t=thuaList(r)[0];location.hash='#bando';setTimeout(()=>pickParcel(keyThua(r.to_bd,t)),200)}
@@ -966,6 +1047,9 @@ $('#bPrint').onclick=()=>{document.body.classList.remove('inmap');window.print()
 $('#bXls').onclick=()=>exportXls().catch(e=>toast(e.message));
 $('#bZip').onclick=()=>zipTB().catch(e=>toast(e.message));
 $('#bTaoLoat').onclick=()=>taoLoat().catch(e=>toast(e.message));
+$('#bVB').onclick=()=>moVB(null).catch(e=>toast(e.message));$('#vbHuy').onclick=()=>$('#dVB').close();$('#vbTao').onclick=()=>taoVB();
+$('#iMauVB').onclick=()=>{$('#dCfg').close();putMauVB().catch(e=>toast('Lỗi: '+e.message))};
+$('#mauVbBox').addEventListener('click',e=>{const b=e.target.closest('[data-xm]');if(b){$('#dCfg').close();delMauVB(b.dataset.xm).catch(er=>toast(er.message))}});
 /* sửa / thêm */
 let editR=null;
 function openDlg(r){editR=r;$('#dlgT').textContent=r?`Sửa hộ STT ${r.stt}`:'Thêm hộ';for(const el of $('#fm').elements)if(el.name)el.value=r?.[el.name]??'';for(const k of ['tien_bt','tien_ht','tien_tdc','da_chi'])if(r&&tien(r[k]))$('#fm').elements[k].value=fT(tien(r[k]));
@@ -981,7 +1065,7 @@ $('#dlg').addEventListener('close',async()=>{
   try{isSample=false;if(!CFG.api)await capMa();await saveRow(r,editR?'sửa hộ':'thêm hộ')}catch(e){toast('Lỗi ghi: '+e.message);render()}
 });
 /* cấu hình */
-$('#bCfg').onclick=()=>{$('#linkBox').hidden=!CFG.api;$('#linkDA').value=CFG.api?linkDA():'';for(const k of SHARED)$('#fCfg').elements[k].readOnly=!!CFG.api&&!isAdmin();$('#iXls').hidden=!has('sua');$('#iMap').hidden=$('#iMau').hidden=!isAdmin();$('#iReset').hidden=!!CFG.api;for(const el of $('#fCfg').elements)if(el.name)el.value=CFG[el.name]??'';$('#cfgStat').textContent=`Danh sách: ${D.length} hộ${isSample?' (mẫu)':''} · Bản vẽ: ${MAP?MAP._src+' – '+(MAP.thua||[]).length+' thửa':'chưa có'} · Mẫu thông báo: ${MAU?'đã nạp':'chưa nạp'}`;$('#dCfg').showModal()};
+$('#bCfg').onclick=()=>{$('#linkBox').hidden=!CFG.api;$('#linkDA').value=CFG.api?linkDA():'';for(const k of SHARED)$('#fCfg').elements[k].readOnly=!!CFG.api&&!isAdmin();$('#iXls').hidden=!has('sua');$('#iMap').hidden=$('#iMau').hidden=$('#iMauVB').hidden=!isAdmin();$('#mauVbBox').innerHTML=MAUVB.length?'<label>Mẫu văn bản khác</label>'+MAUVB.map(m=>`<span class="chip" style="display:inline-flex;gap:6px;margin:2px">${esc(m.ten)}${isAdmin()?`<button type="button" class="lk bad" data-xm="${esc(m.ten)}" title="Xóa mẫu">✕</button>`:''}</span>`).join(''):'';$('#iReset').hidden=!!CFG.api;for(const el of $('#fCfg').elements)if(el.name)el.value=CFG[el.name]??'';$('#cfgStat').textContent=`Danh sách: ${D.length} hộ${isSample?' (mẫu)':''} · Bản vẽ: ${MAP?MAP._src+' – '+(MAP.thua||[]).length+' thửa':'chưa có'} · Mẫu thông báo: ${MAU?'đã nạp':'chưa nạp'}`;$('#dCfg').showModal()};
 $('#dCfg').addEventListener('close',()=>{if($('#dCfg').returnValue!=='ok')return;const old=CFG.api;for(const el of $('#fCfg').elements)if(el.name)CFG[el.name]=el.value.trim();saveCfg();toast('Đã lưu cấu hình');if(CFG.api===old&&CFG.api&&isAdmin())api('putCfg',{cfg:Object.fromEntries(SHARED.map(k=>[k,CFG[k]]))}).then(()=>toast('Đã lưu cấu hình chung cho cả dự án')).catch(e=>toast(e.message));if(old!==CFG.api){TOKEN='';try{localStorage.removeItem('dsho_tk')}catch(e){}load()}else{render();if(mapReady)drawMap()}});
 $('#iXls').onclick=()=>{$('#dCfg').close();importXls().catch(e=>toast(e.message))};
 $('#iMauXls').onclick=()=>exportXls(true).catch(e=>toast(e.message));

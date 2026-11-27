@@ -27,6 +27,13 @@ async def main():
         xm = await R.page(LINK); await login(xm, 'xem1', '12345678')
         ok(await xm.locator('#tMain [data-a=sua]').count() == 0 and await xm.locator('#bAdd').is_hidden(), 'quyền Xem: không có nút sửa')
         ok('THỬ' in await xm.inner_text('#duAn'), 'cấu hình chung áp cho người khác')
+        # mẫu văn bản: quản trị nạp lên máy chủ, người khác dùng
+        async with ad.expect_file_chooser() as fc:
+            await ad.click('#bCfg'); await ad.click('#iMauVB')
+        await (await fc.value).set_files(f'{FX}/mau_vb.docx'); await ad.wait_for_timeout(400); await ad.click('dialog[open] button[value=ok]'); await ad.wait_for_timeout(800)
+        await xm.click('#bReload'); await xm.wait_for_timeout(1000); await xm.click('#tMain tbody tr:nth-child(2) [data-a=vb]'); await xm.wait_for_timeout(200)
+        async with xm.expect_download() as d: await xm.click('#vbTao')
+        ok((await d.value).suggested_filename.startswith('mau_vb_STT002'), 'mẫu văn bản lưu máy chủ, quyền Xem vẫn tạo được')
         # đề nghị → duyệt
         t2 = await R.page(LINK); await login(t2, 'to2', '12345678')
         ok(await t2.locator('#tMain [data-a=sua]').count() == 2, 'phạm vi Tổ 2: chỉ sửa được 2 hộ Tổ 2')

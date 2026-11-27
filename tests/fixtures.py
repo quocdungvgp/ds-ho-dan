@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw
 D = os.path.join(os.path.dirname(__file__), 'fx'); os.makedirs(D, exist_ok=True)
 d = Document(); d.add_paragraph("THÔNG BÁO THU HỒI ĐẤT"); d.add_paragraph("Thu hồi đất của «HOTEN».")
 d.add_paragraph("Diện tích đất dự kiến thu hồi: «DT» m², thuộc «MUC» thửa đất số «THUA», tờ bản đồ số «TO». STT «STT»"); d.save(f'{D}/mau.docx')
+d = Document(); d.add_paragraph("PHIẾU CHI TIỀN BỒI THƯỜNG"); d.add_paragraph("Chi cho «HOTEN», thửa «THUA» tờ «TO». Kiểm đếm ngày «NGAY_KD»."); d.add_paragraph("Số tiền: «TONG» đồng (Bằng chữ: «TONG_CHU»)."); d.save(f'{D}/mau_vb.docx')
 d = Document(); p = d.add_paragraph(); p.add_run("Thu hồi đất của "); r = p.add_run("Ông/Bà Nguyễn Văn "); r.bold = True; r = p.add_run("Ann."); r.bold = True
 p = d.add_paragraph(); p.add_run("Diện tích đất dự kiến thu hồi: "); p.add_run("20"); p.add_run(",5 m², thuộc một phần thửa đất số 1, tờ bản đồ số 134."); d.save(f'{D}/tb_that.docx')
 H = ['STT', 'Họ và tên', 'Địa chỉ thu hồi', 'Phường', 'Khu phố', 'Tổ', 'Số tờ', 'Số thửa', 'Diện tích thu hồi', 'Giải tỏa']
