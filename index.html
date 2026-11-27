@@ -203,7 +203,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <div><h4>Chú giải <span class="note">· bấm để bật/tắt</span></h4><div class="leg" id="mLeg"></div></div>
       <div><h4>Ảnh vệ tinh theo năm <span class="note">· Esri Wayback</span></h4>
         <select id="mWb"><option value="">Ảnh hiện tại (theo nền đang chọn)</option></select>
-        <label class="row note" style="flex-wrap:nowrap;margin-top:4px">Độ rõ <input type="range" id="mWbO" min="0" max="100" value="100" style="min-height:0;padding:0;border:0"></label>
+        <label class="row note" style="flex-wrap:nowrap;margin-top:4px;white-space:nowrap">Độ rõ <input type="range" id="mWbO" min="0" max="100" value="100" style="min-height:0;padding:0;border:0"></label>
         <span class="note" id="mWbN"></span></div>
       <label class="row" style="font-size:13px"><input type="checkbox" id="mLab" style="width:auto;min-height:0" checked> Nhãn tờ/thửa</label>
       <label class="row" style="font-size:13px"><input type="checkbox" id="mRanh" style="width:auto;min-height:0" checked> Ranh dự án</label>
@@ -1060,7 +1060,7 @@ async function loadWayback(){
     const c=(gThua&&gThua.getLayers().length?gThua.getBounds().getCenter():map.getCenter());
     await Promise.all(WB.map(async w=>{for(const ly of [3,4,5,6]){try{const q=await (await fetch(`${w.meta}/${ly}/query?geometry=${c.lng},${c.lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=SRC_DATE2,SRC_RES&returnGeometry=false&f=json`)).json();const f=q.features&&q.features[0];if(f&&f.attributes.SRC_DATE2){w.chup=new Date(f.attributes.SRC_DATE2).toLocaleDateString('vi-VN');w.res=f.attributes.SRC_RES;return}}catch(e){}}}));
     const out=[];for(const w of WB){if(w.chup&&out.length&&out.at(-1).chup===w.chup)continue;out.push(w)}WB=out;
-    $('#mWb').innerHTML='<option value="">Ảnh hiện tại (theo nền đang chọn)</option>'+WB.map((w,i)=>`<option value="${i}">Năm ${w.y}${w.chup?' · chụp '+w.chup:''}</option>`).join('');
+    $('#mWb').innerHTML='<option value="">Ảnh hiện tại (theo nền đang chọn)</option>'+WB.map((w,i)=>`<option value="${i}">${w.chup?'Ảnh chụp '+w.chup:'Bản Esri năm '+w.y}</option>`).join('');
     $('#mWbN').textContent=WB.length+' mốc ảnh khác nhau tại dự án';
   }catch(e){$('#mWbN').textContent='Không lấy được danh sách ảnh theo năm';WB=null}
   wbLoading=false;
@@ -1068,7 +1068,7 @@ async function loadWayback(){
 $('#mWb').addEventListener('focus',loadWayback);$('#mWb').addEventListener('mousedown',loadWayback);
 $('#mWb').onchange=()=>{if(wbLayer){wbLayer.remove();wbLayer=null}const w=WB&&WB[+$('#mWb').value];if(!$('#mWb').value||!w)return;
   wbLayer=L.tileLayer(w.url.replace('{level}','{z}').replace('{row}','{y}').replace('{col}','{x}'),{maxZoom:22,maxNativeZoom:19,attribution:'Esri Wayback '+w.d,opacity:$('#mWbO').value/100}).addTo(map);
-  $('#mWbN').textContent=`Đang xem ảnh năm ${w.y}${w.chup?' (chụp '+w.chup+(w.res?', độ phân giải '+w.res+' m':'')+')':''} — kéo Độ rõ để so với ảnh hiện tại`};
+  $('#mWbN').textContent=`Đang xem ảnh ${w.chup?'chụp '+w.chup+(w.res?' (độ phân giải '+w.res+' m)':''):'bản Esri năm '+w.y} — kéo Độ rõ để so với ảnh hiện tại`};
 $('#mWbO').oninput=()=>wbLayer&&wbLayer.setOpacity($('#mWbO').value/100);
 
 /* ================================================================
