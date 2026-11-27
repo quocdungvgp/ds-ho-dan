@@ -64,6 +64,23 @@ async def main():
         await (await fc.value).set_files(f'{FX}/ht.pdf'); await pg.wait_for_timeout(2500)
         await pg.click('#tMain tbody tr:nth-child(2) [data-a=ht]'); await pg.wait_for_timeout(3000)
         ok(await pg.locator('#anhGrid canvas').count() == 3, 'ảnh hiện trạng PDF: 3 ảnh'); await pg.click('#anhDong')
+        # chụp ảnh HT bằng điện thoại → PDF có dấu giờ/GPS; hộ đã có PDF thì gộp thêm
+        async with pg.expect_file_chooser() as fc: await pg.click('#tMain tbody tr:nth-child(3) [data-a=chup]')
+        await (await fc.value).set_files([f'{FX}/chup1.jpg', f'{FX}/chup2.jpg']); await pg.wait_for_timeout(9000)
+        ok('📷 2' in await pg.inner_text('#tMain tbody tr:nth-child(3)'), 'chụp ảnh HT: 2 ảnh → PDF 2 trang gắn vào hộ')
+        async with pg.expect_file_chooser() as fc: await pg.click('#tMain tbody tr:nth-child(2) [data-a=chup]')
+        await (await fc.value).set_files([f'{FX}/chup1.jpg']); await pg.wait_for_timeout(500); await pg.click('dialog[open] button[value=ok]'); await pg.wait_for_timeout(9000)
+        ok('📷 4' in await pg.inner_text('#tMain tbody tr:nth-child(2)'), 'chụp thêm vào hồ sơ đã có 3 ảnh → 4 ảnh')
+        # QR: in nhãn → quét từ ảnh → mở đúng hộ; link #ho=
+        await pg.click('#tMain tbody tr:nth-child(1) [data-a=nhan]'); await pg.wait_for_timeout(800)
+        src = await pg.get_attribute('#inNhan img', 'src'); import base64; open('/tmp/_qr.gif', 'wb').write(base64.b64decode(src.split(',')[1]))
+        ok(await pg.locator('#inNhan .nhan').count() == 1 and 'Nguyễn Văn An' in await pg.inner_text('#inNhan'), 'in nhãn QR hồ sơ')
+        await pg.click('#bQuet'); await pg.wait_for_timeout(800)
+        async with pg.expect_file_chooser() as fc: await pg.click('#qrAnh')
+        await (await fc.value).set_files('/tmp/_qr.gif'); await pg.wait_for_timeout(800)
+        ok(await pg.inner_text('#cnt') == '1 hộ' and 'Nguyễn Văn An' in await pg.inner_text('#tMain tbody'), 'quét QR (ảnh) → mở đúng hộ'); await pg.click('#bClear')
+        p2 = await R.page('http://local/index.html#ho=m5'); await p2.wait_for_timeout(500)
+        ok(await p2.inner_text('#cnt') == '1 hộ' and 'Huỳnh Văn Sang' in await p2.inner_text('#tMain tbody'), 'mở link #ho=<id> → đúng hộ'); await p2.close()
         # zip, excel
         async with pg.expect_download() as d: await pg.click('#bZip')
         ok((await d.value).suggested_filename.endswith('.zip'), 'tải TB zip')

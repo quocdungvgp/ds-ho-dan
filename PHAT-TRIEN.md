@@ -24,7 +24,8 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
   Có `CFG.api` → đăng nhập, mọi thứ qua Apps Script; máy chủ kiểm quyền lại.
 - **Link dự án**: `…/ds-ho-dan/?api=<URL /exec>` → tự lưu vào cấu hình, xóa tham số khỏi thanh địa chỉ.
 - Thư viện tải từ jsDelivr, ghim phiên bản (bảng `LIB` trong mục 1 và `<head>`): leaflet 1.9.4, proj4 2.12.1 (nạp sẵn);
-  xlsx 0.18.5, jszip 3.10.1, pizzip 3.1.7, docxtemplater 3.47.4, docx-preview 0.3.2, pdfjs-dist 3.11.174 (nạp khi cần qua `need('xlsx',…)`).
+  xlsx 0.18.5, jszip 3.10.1, pizzip 3.1.7, docxtemplater 3.47.4, docx-preview 0.3.2, pdfjs-dist 3.11.174, qrcode-generator 1.4.4, jsqr 1.4.0, jspdf 2.5.1 (nạp khi cần qua `need('xlsx',…)`).
+  Thêm thư viện: `LIB` + `tests/package.json` + bảng `CDN` trong `tests/common.py`.
 - Hệ tọa độ: `proj4.defs('VN2000HCM', …)` — kinh tuyến trục 105°45′, múi 3°, k=0,9999, 7 tham số towgs84. Tỉnh khác sửa `+lon_0`.
 
 ## 2. Bản đồ code `index.html` (tìm bằng tiêu đề mục)
@@ -50,6 +51,7 @@ dxf2bando.py: bản vẽ CAD (DXF, VN2000) → bando.json
 | 13. ẢNH HIỆN TRẠNG | `pdfLib getHT attachHT openAnh drawThumbs bigAnh` | |
 | 14. ẢNH THEO NĂM | `loadWayback` (Esri waybackconfig.json + metadata ngày chụp) | |
 | 15. SỬA BẢN VẼ | `ED edSet edClick clipHalf edPush edApply`, lưu `putMap` | |
+| 16. QR & CHỤP ẢNH HT | `hoLink moHo PEND_HO inNhan quetQR qrTuAnh docQR`, `pickFiles viTri dongDau chupHT` → `luuHT(r,buf,name)` (mục 13) | link `#ho=<id>` xử lý trong `route()` + cuối `render()` |
 
 Quy ước: nút thao tác trên dòng dùng `data-a="<việc>" data-id="<id hộ>"`, bắt chung ở mục 10. Lọc nhanh dùng `data-f='{json bộ lọc}'`.
 Giá trị từ Sheet luôn qua `esc()` trước khi ghép HTML. Hộp xác nhận dùng `hoi(msg, nhãnÔNhập?)` (không dùng confirm/prompt).
@@ -94,9 +96,9 @@ python3 ui_local.py                 # chế độ một máy: 15 bước
 node mock-gas.js &                  # Apps Script giả lập (chạy lại mỗi lần cho sạch dữ liệu), cổng 8787
 python3 ui_server.py                # chế độ Sheet + phân quyền: 14 bước
 ```
-`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **46/46 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
+`common.py` chặn CDN → trả từ `tests/node_modules`, chuyển `script.google.com` → máy giả lập. Lần cuối: **51/51 OK** (27/11/2026). mock-gas có lối test `/__het` (xóa Cache) và `/__mail` (chạy `guiBaoDeNghi`, trả thư). Chạy cả bộ: `sh tests/chay.sh`.
 Chrome: `/usr/bin/google-chrome` (đổi bằng biến `CHROME`). File tải về trong test không có đuôi → `save_as()` ra file có đuôi rồi mới mở bằng openpyxl.
-Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy).
+Chưa thử: Google Apps Script thật, ảnh nền bản đồ (chỉ thử tay trên trang thật — ảnh vệ tinh và Wayback chạy), camera quét QR thật + GPS thật (test dùng nhánh “chọn ảnh”).
 
 ## 6. Đẩy lên
 
@@ -110,8 +112,8 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 1. ~~**Tiến độ GPMB theo giai đoạn**~~ — **XONG 27/11/2026** (xem mục 3 + Nhật ký làm). Còn có thể làm thêm: hạn riêng từng bước (vd hạn chi trả) + tô đỏ hộ trễ hạn; biểu đồ số hộ xong theo tuần (từ `gd_ngay`); mở rộng tới 23 giai đoạn như thẻ của Ban nếu cần (chỉ sửa mảng `GD`).
 2. ~~**Tiền bồi thường – hỗ trợ – TĐC & chi trả**~~ — **XONG 27/11/2026**. Ngày chi dùng chung ngày bước “Chi trả”, không thêm cột `ngay_chi`.
 3. ~~**Nhiều mẫu văn bản**~~ — **XONG**: mẫu TB thu hồi giữ nguyên (gắn vào hộ); mẫu khác tạo ra thì **tải về** (1 hộ = .docx, nhiều hộ = zip), không gắn vào hộ.
-4. **QR mã hồ sơ**: in nhãn bìa hồ sơ (QR = link `#ho=<id>` mở đúng hộ), quét QR bằng camera điện thoại (thư viện qrcode-generator + jsQR). Ban đang dùng “QR hồ sơ / Quét QR”.
-5. **Chụp ảnh hiện trạng thẳng bằng điện thoại**: `<input type=file accept=image/* capture=environment multiple>`, gắn giờ + GPS lên ảnh, gộp thành PDF (jsPDF) rồi dùng luồng `attachHT` sẵn có.
+4. ~~**QR mã hồ sơ**~~ — **XONG** (in nhãn 3 cột A4, quét camera BarcodeDetector/jsQR hoặc từ ảnh, link `#ho=`).
+5. ~~**Chụp ảnh hiện trạng bằng điện thoại**~~ — **XONG** (giờ chụp = `lastModified` của ảnh, GPS = vị trí máy lúc bấm, ảnh thu ≤1600 px, gộp vào PDF cũ nếu muốn).
 6. ~~**Sao lưu tự động**~~ — **XONG**: `caiTuDong()` → `saoLuu()` mỗi đêm, thư mục “Sao lưu”, giữ `SAO_LUU_GIU`=30.
 
 ### Ưu tiên 2
@@ -161,3 +163,8 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 - Trường mới: «TO_NVBT CANBO GIAITOA GHICHU TIEN_BT TIEN_HT TIEN_TDC TONG TONG_CHU DA_CHI DA_CHI_CHU CON_LAI GIAIDOAN NGAY_KD…NGAY_BG DUAN DONVI HOM_NAY HAN_BG».
   `docSo()` đọc số kiểu “Một nghìn năm trăm tỷ”, “Một triệu không trăm linh năm nghìn”. Nạp mẫu có thử `dien()` trước → báo lỗi trường hỏng.
 - `Code.gs`: action `mauDS getMauVB putMauVB delMauVB` → dán Code.gs mới + Phiên bản mới (không cần `caiDat`).
+
+### 27/11/2026 — QR hồ sơ + chụp ảnh hiện trạng bằng điện thoại (mục 7.4, 7.5)
+- Hero: **🏷 In nhãn QR** (các hộ đang lọc), **⌗ Quét QR hồ sơ**. Dòng hộ: **🏷 QR**, **📷 Chụp ảnh HT** (nút đính kèm PDF đổi thành 📎).
+- `attachHT` tách thành `attachHT` (chọn file) + `luuHT` (đếm trang, lưu) để chụp ảnh dùng lại.
+- Không đổi Code.gs.

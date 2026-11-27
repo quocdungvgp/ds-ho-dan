@@ -121,6 +121,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .flash{animation:fl .5s 6 alternate}@keyframes fl{to{stroke-opacity:.1;fill-opacity:.05}}
 @media(max-width:900px){.mapwrap{grid-template-columns:1fr;height:auto}.side{order:2}#map{height:70vh}}
 @media(max-width:600px){.filters .q{grid-column:1/-1}.fm{grid-template-columns:1fr}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;color:var(--mute);font-size:12px}.stack td:empty{display:none}}
+#inNhan{display:none}
+.nhan{border:1px dashed #999;padding:6px;display:flex;gap:8px;align-items:center;break-inside:avoid;font:10pt/1.3 "Times New Roman",serif;color:#000}
+.nhan img{width:30mm;height:30mm;image-rendering:pixelated;flex:none}.nhan b{font-size:11pt}
+tr.flash td{animation:fl2 .6s 4 alternate}@keyframes fl2{to{background:#ffe8a3}}
+@media print{body.innhan>*:not(#inNhan){display:none!important}body.innhan #inNhan{display:grid!important;grid-template-columns:repeat(3,1fr);gap:4mm}}
 @media(prefers-reduced-motion:reduce){#toast{transition:none}.flash{animation:none}}
 @media print{
   @page{size:A4 landscape;margin:12mm 10mm}
@@ -168,6 +173,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <button class="btn" id="bVB">📄 Tạo văn bản (theo mẫu)</button>
       <button class="btn" id="bXls">⇩ Xuất Excel</button>
       <button class="btn" id="bPrint">⎙ In danh sách</button>
+      <button class="btn" id="bNhan">🏷 In nhãn QR</button>
+      <button class="btn" id="bQuet">⌗ Quét QR hồ sơ</button>
       <button class="btn" id="bKemLoat" hidden>⇪ Đính kèm hàng loạt</button>
       <button class="btn" id="bDongBo" hidden title="So file Word thông báo với thông tin trên web; ghi hẳn chỗ lệch vào file">⟳ Đồng bộ file Word</button>
       <a class="btn" id="bSheet" hidden target="_blank" rel="noopener">▦ Mở Google Sheet</a>
@@ -354,6 +361,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <!-- ảnh hiện trạng -->
 <dialog id="dAnh" class="wide"><div class="dh"><h3 id="anhT"></h3><div class="row"><button class="btn sm" id="anhTai">⇩ PDF</button><button class="btn sm" id="anhThay">Thay</button><button class="btn sm" id="anhGo" style="color:var(--bad)">Gỡ</button><a class="btn sm" id="anhLink" target="_blank" rel="noopener">Thư mục Drive</a><button class="btn sm" id="anhDong">Đóng</button></div></div>
   <div id="anhBody" style="height:calc(90vh - 56px);overflow:auto;padding:12px;background:#1d1a17"></div></dialog>
+<!-- quét QR -->
+<dialog id="dQR"><div class="dh"><h3>Quét QR hồ sơ</h3><div class="row"><button class="btn sm" id="qrAnh">Chọn ảnh có QR</button><button class="btn sm" id="qrDong">Đóng</button></div></div>
+  <div style="padding:12px"><video id="qrVid" playsinline muted style="width:100%;max-height:60vh;background:#000;border-radius:10px"></video><p class="note" id="qrMsg">Đưa mã QR trên bìa hồ sơ vào khung hình.</p></div></dialog>
+<div id="inNhan" hidden></div>
 <div id="toast"></div>
 
 <script>
@@ -379,7 +390,7 @@ const download=(blob,name)=>{const a=document.createElement('a');a.href=URL.crea
 const b64ToBuf=b=>{const s=atob(b),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
 const bufToB64=buf=>{const u=new Uint8Array(buf);let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
 const DOCX='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const LIB={pdf:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',jszip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',pizzip:'https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js',dt:'https://cdn.jsdelivr.net/npm/docxtemplater@3.47.4/build/docxtemplater.js',dp:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.2/dist/docx-preview.min.js'};
+const LIB={pdf:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',jszip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',pizzip:'https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js',dt:'https://cdn.jsdelivr.net/npm/docxtemplater@3.47.4/build/docxtemplater.js',dp:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.2/dist/docx-preview.min.js',qr:'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js',jsqr:'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',jspdf:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'};
 const loaded={};
 const need=(...ks)=>Promise.all(ks.map(k=>loaded[k]||(loaded[k]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=LIB[k];s.onload=ok;s.onerror=()=>{delete loaded[k];no(new Error('Không tải được thư viện '+k))};document.head.append(s)}))));
 /* IndexedDB nhỏ: lưu file thông báo, bản vẽ, mẫu Word khi không dùng Google Drive */
@@ -648,6 +659,7 @@ function render(){
   $('#dlCb').innerHTML=[...new Set(D.map(r=>r.canbo).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
   $('#bTaoLoat').hidden=!MAU||!has('denghi');$('#bVB').hidden=!MAUVB.length;$('#bAdd').hidden=!has('denghi');
   topBar();
+  if(PEND_HO&&D.length)setTimeout(moHo,0);
   $('#footNote').textContent=`Tờ/thửa trong danh sách ghép với bản vẽ theo "tờ/thửa". DT còn lại = DT thửa trên bản vẽ − DT thu hồi của các hộ trên thửa (hộ toàn phần không tính). Bản vẽ: ${MAP?MAP._src:'chưa có'}. Thông tin hộ dân chỉ dùng nội bộ — không chụp gửi ra ngoài.`;
   list();
 }
@@ -674,7 +686,7 @@ function list(){
     const sh=(k,l,c='')=>`<th class="${c}"><button class="lk" data-sort="${k}" style="text-decoration:none">${l}${sortK===k?(sortD>0?' ▲':' ▼'):''}</button></th>`;
     h='<tr>'+sh('stt','STT')+sh('ma','Mã số hồ sơ')+sh('canbo','Cán bộ thụ lý')+sh('ten','Họ và tên')+sh('diachi','Địa chỉ thu hồi')+'<th>P · KP</th>'+sh('to','Tổ')+sh('thua','Tờ · Thửa')+sh('dt','DT thu hồi (m²)','n')+sh('gd','Giải tỏa · Tiến độ')+'<th>Thông báo thu hồi đất</th></tr>';
     body=R.map(r=>{const cl=conLai(r);return`<tr><td>${esc(r.stt)}</td><td>${r.ma?`<span class="code">${esc(r.ma)}</span>`:'<span class="note">chưa cấp mã</span>'}</td><td>${r.canbo?esc(r.canbo):'<span class="warn note">chưa có</span>'}</td>
-      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📷 Ảnh HT (PDF)</button>`}<button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${MAUVB.length?`<div class="act noprint"><button data-a="vb" data-id="${esc(r.id)}">📄 Văn bản</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
+      <td><span class="nm">${esc(r.ten)}</span>${coAnhR(r)?` <button class="lk note noprint" data-a="ht" data-id="${esc(r.id)}" title="Hồ sơ hiện trạng">📷 ${esc(r.anh||'')}</button>`:''}${r.ghichu?`<div class="note">${esc(r.ghichu)}</div>`:''}${r._moi?'<div><span class="tag t0">hộ bổ sung</span></div>':''}${canRow(r)?`<div class="act noprint"><button data-a="sua" data-id="${esc(r.id)}">✎ Sửa</button><button class="x" data-a="xoa" data-id="${esc(r.id)}">Xóa</button>${r.ht_file?'':`<button data-a="kemht" data-id="${esc(r.id)}">📎 Ảnh HT (PDF)</button>`}<button data-a="chup" data-id="${esc(r.id)}" title="Chụp bằng điện thoại / chọn ảnh — tự đóng dấu giờ, GPS, gộp thành PDF">📷 Chụp ảnh HT</button><button data-a="nhan" data-id="${esc(r.id)}">🏷 QR</button><button data-a="lichsu" data-id="${esc(r.id)}" ${isAdmin()&&CFG.api?'':'hidden'}>Lịch sử</button></div>`:''}${MAUVB.length?`<div class="act noprint"><button data-a="vb" data-id="${esc(r.id)}">📄 Văn bản</button></div>`:''}${choOf(r).map(c=>choHtml(c,r)).join('')}</td>
       <td>${esc(r.diachi)}</td><td style="white-space:nowrap">P${esc(r.phuong)} · KP ${esc(r.kp)}</td><td>${r.to?`<span class="tag ${TO_CLS[r.to]||'t0'}">${esc(r.to)}</span>`:'<span class="note">chưa phân</span>'}</td>
       <td style="white-space:nowrap"><button class="lk" data-a="map" data-id="${esc(r.id)}" title="Xem trên bản đồ">Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)}</button></td>
       <td class="n">${num(r.dt)?f1(num(r.dt)):'<span class="warn">cần bổ sung</span>'}${cl.v!==undefined?`<div class="note ${cl.k==='duoi'?'warn':''}">còn lại ${f1(cl.v)} m²</div>`:''}</td>
@@ -1005,7 +1017,9 @@ function exportKML(){
 /* ================================================================
    10. SỰ KIỆN
    ================================================================ */
+let PEND_HO='';
 function route(){
+  if(location.hash.startsWith('#ho=')){PEND_HO=decodeURIComponent(location.hash.slice(4));history.replaceState(null,'',location.pathname+location.search+'#ds');if(D.length)moHo()}
   const m=location.hash==='#bando';$('#vDs').hidden=m;$('#vMap').hidden=!m;
   $('#tabDs').classList.toggle('on',!m);$('#tabMap').classList.toggle('on',m);
   if(m){initMap();setTimeout(()=>map&&map.invalidateSize(),50)}
@@ -1027,6 +1041,8 @@ document.addEventListener('click',async e=>{
     else if(a==='vb')await moVB(r);
     else if(a==='ht'){if(r.ht_file)openAnh(r);else if(r.ht)window.open(r.ht,'_blank','noopener');else toast(`Hộ có ${r.anh} ảnh — chưa đính kèm PDF hay link hồ sơ hiện trạng`)}
     else if(a==='kemht')attachHT(r);
+    else if(a==='chup')await chupHT(r);
+    else if(a==='nhan')inNhan([r]);
     else if(a==='map'){const t=thuaList(r)[0];location.hash='#bando';setTimeout(()=>pickParcel(keyThua(r.to_bd,t)),200)}
     else if(a==='mapk'){location.hash='#bando';setTimeout(()=>pickParcel(b.dataset.k),200)}
     else if(a==='duyet'){await duyet([b.dataset.c],true)}
@@ -1196,8 +1212,9 @@ $('#bKemLoat').onclick=async()=>{
    ================================================================ */
 async function pdfLib(){await need('pdf');if(!pdfjsLib.GlobalWorkerOptions.workerSrc){try{const t=await (await fetch(LIB.pdf.replace('pdf.min.js','pdf.worker.min.js'))).text();pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([t],{type:'text/javascript'}))}catch(e){pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdf.replace('pdf.min.js','pdf.worker.min.js')}}return pdfjsLib}
 async function getHT(r){if(String(r.ht_file).startsWith('local:'))return await idb.get(r.ht_file);if(CFG.api&&r.ht_file){const j=await api('getFile',{id:r.ht_file});return b64ToBuf(j.b64)}return null}
-async function attachHT(r){
-  const f=await pickFile('.pdf');if(!f)return;const buf=await f.arrayBuffer();toast('Đang đọc PDF…');
+async function attachHT(r){const f=await pickFile('.pdf');if(f)await luuHT(r,await f.arrayBuffer(),f.name)}
+async function luuHT(r,buf,name){
+  const f={name};toast('Đang đọc PDF…');
   let anh='';try{const L=await pdfLib();anh=String((await L.getDocument({data:buf.slice(0)}).promise).numPages)}catch(e){return toast('Không đọc được PDF: '+e.message)}
   if(buf.byteLength>35e6)return toast('File quá lớn (> 35 MB) — tách nhỏ hoặc để link Drive');
   try{
@@ -1233,6 +1250,68 @@ $('#anhThay').onclick=()=>{$('#dAnh').close();attachHT(anhR)};
 $('#anhGo').onclick=async()=>{if(!await hoi('Gỡ ảnh hiện trạng của hộ '+anhR.ten+'?'))return;$('#dAnh').close();const r=anhR;
   if(CFG.api)return xong(await api('delHT',{id:r.id}),'gỡ ảnh hiện trạng');
   await idb.del(r.ht_file);r.ht_file='';r.ht_ten='';r.anh='';saveLocal();toast('Đã gỡ');render()};
+
+/* ================================================================
+   16. QR HỒ SƠ & CHỤP ẢNH HIỆN TRẠNG BẰNG ĐIỆN THOẠI
+   QR = link trang + #ho=<id> (có ?api= nếu nối Sheet) → mở đúng hộ. In nhãn: 3 nhãn/hàng, in A4.
+   Chụp ảnh: ảnh → đóng dấu giờ chụp, GPS, tên hộ, tờ/thửa → gộp PDF (jsPDF) → luuHT() như đính kèm PDF.
+   ================================================================ */
+const hoLink=r=>(CFG.api?linkDA():location.origin+location.pathname)+'#ho='+encodeURIComponent(r.id);
+function moHo(){
+  const id=PEND_HO;PEND_HO='';const r=D.concat(virtRows()).find(x=>String(x.id)===String(id));
+  if(!r)return toast('Không thấy hộ của mã QR này trong danh sách (có thể đã bị xóa, hoặc QR của dự án khác)');
+  if(location.hash!=='#ds'){location.hash='#ds'}
+  setFilter({q:r.ma||r.ten});setTimeout(()=>{const tr=[...document.querySelectorAll('#tMain tbody tr')].find(t=>t.querySelector(`[data-id="${CSS.escape(String(r.id))}"]`))||$('#tMain tbody tr');if(tr){tr.classList.add('flash');tr.scrollIntoView({block:'center'});setTimeout(()=>tr.classList.remove('flash'),3000)}},100);
+  toast('Hồ sơ: '+r.ten+(r.ma?' · '+r.ma:''));
+}
+async function inNhan(R){
+  R=R||filtered();if(!R.length)return toast('Không có hộ nào trong bộ lọc');await need('qr');
+  $('#inNhan').innerHTML=R.map(r=>{const q=qrcode(0,'M');q.addData(hoLink(r));q.make();
+    return`<div class="nhan"><img alt="QR" src="${q.createDataURL(4,2)}"><div><b>${esc(r.ma||'(chưa cấp mã)')}</b><br>${esc(r.ten)}<br>${esc(r.diachi||'')}<br>Tờ ${esc(r.to_bd)} · Thửa ${esc(r.thua)} · ${esc(r.to||'')}<br><small>STT ${esc(r.stt)} · ${esc(CFG.duAn)}</small></div></div>`}).join('');
+  document.body.classList.add('innhan');setTimeout(()=>{window.print();document.body.classList.remove('innhan')},300);
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('innhan'));
+/* quét: camera (BarcodeDetector nếu có, không thì jsQR) hoặc chọn ảnh */
+let qrStream=null,qrRun=false;
+function docQR(txt){const m=String(txt||'').match(/#ho=([^&\s]+)/);if(!m)return toast('QR này không phải mã hồ sơ của trang');qrStop();$('#dQR').close();PEND_HO=decodeURIComponent(m[1]);moHo()}
+function qrStop(){qrRun=false;if(qrStream){qrStream.getTracks().forEach(t=>t.stop());qrStream=null}}
+async function quetQR(){
+  const d=$('#dQR');d.showModal();$('#qrMsg').textContent='Đang mở camera…';
+  try{await need('jsqr');qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const v=$('#qrVid');v.srcObject=qrStream;await v.play();$('#qrMsg').textContent='Đưa mã QR trên bìa hồ sơ vào khung hình.';
+    const c=document.createElement('canvas'),x=c.getContext('2d',{willReadFrequently:true});qrRun=true;
+    const bd='BarcodeDetector' in window?new BarcodeDetector({formats:['qr_code']}):null;
+    const tick=async()=>{if(!qrRun)return;if(v.videoWidth){if(bd){try{const k=await bd.detect(v);if(k[0])return docQR(k[0].rawValue)}catch(e){}}
+      c.width=v.videoWidth;c.height=v.videoHeight;x.drawImage(v,0,0);const k=jsQR(x.getImageData(0,0,c.width,c.height).data,c.width,c.height);if(k)return docQR(k.data)}
+      requestAnimationFrame(tick)};tick()}
+  catch(e){$('#qrMsg').textContent='Không mở được camera ('+e.message+') — bấm “Chọn ảnh có QR” để chụp/chọn ảnh.'}
+}
+async function qrTuAnh(){
+  const f=await pickFile('image/*');if(!f)return;await need('jsqr');const b=await createImageBitmap(f),sc=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement('canvas');
+  c.width=b.width*sc;c.height=b.height*sc;const x=c.getContext('2d');x.drawImage(b,0,0,c.width,c.height);const k=jsQR(x.getImageData(0,0,c.width,c.height).data,c.width,c.height);
+  k?docQR(k.data):toast('Không đọc được QR trong ảnh — chụp gần, rõ hơn');
+}
+$('#bNhan').onclick=()=>inNhan().catch(e=>toast(e.message));
+$('#bQuet').onclick=()=>quetQR();$('#qrDong').onclick=()=>{qrStop();$('#dQR').close()};$('#dQR').addEventListener('close',qrStop);$('#qrAnh').onclick=()=>qrTuAnh().catch(e=>toast(e.message));
+const pickFiles=(accept,capture)=>new Promise(ok=>{fileX.value='';fileX.accept=accept;fileX.multiple=true;capture?fileX.setAttribute('capture','environment'):fileX.removeAttribute('capture');fileX.onchange=()=>{const fs=[...fileX.files];fileX.multiple=false;fileX.removeAttribute('capture');ok(fs)};fileX.click()});
+const viTri=()=>new Promise(ok=>{if(!navigator.geolocation)return ok(null);const t=setTimeout(()=>ok(null),6000);navigator.geolocation.getCurrentPosition(p=>{clearTimeout(t);ok(p.coords)},()=>{clearTimeout(t);ok(null)},{enableHighAccuracy:true,timeout:6000,maximumAge:60000})});
+const MAXP=1600;
+function dongDau(c,lines){const x=c.getContext('2d'),fs=Math.max(16,Math.round(c.width/45)),h=lines.length*fs*1.35+fs*.6;
+  x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,c.height-h,c.width,h);x.fillStyle='#fff';x.font=`600 ${fs}px "Be Vietnam Pro",Arial,sans-serif`;x.textBaseline='top';
+  lines.forEach((l,i)=>x.fillText(l,fs*.6,c.height-h+fs*.3+i*fs*1.35,c.width-fs*1.2))}
+async function chupHT(r){
+  const fs=(await pickFiles('image/*',true)).filter(f=>/^image\//.test(f.type));if(!fs.length)return;
+  let gop=false;if(r.ht_file){const k=await hoi(`Hộ đã có hồ sơ hiện trạng ${r.anh||''} ảnh. Thêm ${fs.length} ảnh mới vào cuối? (Không = thay bằng ảnh mới)`);gop=k}
+  toast('Đang lấy vị trí GPS…');const g=await viTri();await need('jspdf');
+  const pages=[];
+  if(gop){try{const L=await pdfLib(),doc=await L.getDocument({data:(await getHT(r)).slice(0)}).promise;for(let i=1;i<=doc.numPages;i++){const p=await doc.getPage(i),v=p.getViewport({scale:1}),vp=p.getViewport({scale:Math.min(2,MAXP/Math.max(v.width,v.height))}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await p.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;pages.push(c)}}catch(e){return toast('Không đọc được hồ sơ cũ: '+e.message)}}
+  for(const [i,f] of fs.entries()){toast(`Đang xử lý ảnh ${i+1}/${fs.length}…`);const b=await createImageBitmap(f),sc=Math.min(1,MAXP/Math.max(b.width,b.height)),c=document.createElement('canvas');
+    c.width=Math.round(b.width*sc);c.height=Math.round(b.height*sc);c.getContext('2d').drawImage(b,0,0,c.width,c.height);const t=new Date(f.lastModified||Date.now());
+    dongDau(c,[t.toLocaleDateString('vi-VN')+' '+t.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+(g?` · GPS ${g.latitude.toFixed(6)}, ${g.longitude.toFixed(6)} (±${Math.round(g.accuracy)} m)`:' · không có GPS'),
+      `${r.ten} · Tờ ${r.to_bd} Thửa ${r.thua}${r.ma?' · '+r.ma:''}`]);pages.push(c)}
+  const {jsPDF}=window.jspdf;let pdf=null;
+  for(const c of pages){const o=c.width>c.height?'l':'p';if(!pdf)pdf=new jsPDF({orientation:o,unit:'px',format:[c.width,c.height],hotfixes:['px_scaling'],compress:true});else pdf.addPage([c.width,c.height],o);pdf.addImage(c.toDataURL('image/jpeg',.82),'JPEG',0,0,c.width,c.height)}
+  await luuHT(r,pdf.output('arraybuffer'),'HienTrang_STT'+String(r.stt||'').padStart(3,'0')+'_'+fold(r.ten).replace(/[^a-z0-9]+/g,'_')+'.pdf');
+}
 
 /* ================================================================
    14. ẢNH VỆ TINH THEO NĂM (Esri World Imagery Wayback) — mỗi năm lấy bản phát hành cuối năm,

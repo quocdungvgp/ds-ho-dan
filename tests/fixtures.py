@@ -21,6 +21,7 @@ ims = []
 for i in range(3):
     im = Image.new('RGB', (800, 600), (40 + i * 60, 120, 160)); ImageDraw.Draw(im).text((40, 40), f"Anh {i+1}", fill=(255, 255, 255)); ims.append(im)
 ims[0].save(f'{D}/ht.pdf', save_all=True, append_images=ims[1:])
+ims[0].save(f'{D}/chup1.jpg'); ims[1].save(f'{D}/chup2.jpg')
 with zipfile.ZipFile(f'{D}/tb.zip', 'w') as z:
     z.write(f'{D}/mau.docx', 'TB/TBTHD_STT002_Tran Thi Bich.docx'); z.write(f'{D}/mau.docx', 'TB/TBTHD_STT099_X.docx')
 shutil.copy(f'{D}/mau.docx', f'{D}/TBTHD_STT001_Nguyen Van An.docx')

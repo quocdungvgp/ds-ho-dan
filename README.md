@@ -73,6 +73,11 @@ Trong Apps Script chạy hàm **`caiTuDong()`** (cho phép quyền): mỗi đêm
 - Trong file Word gõ trường kèm « »: «HOTEN» «DIACHI» «THUA» «TO» «DT» «TONG» «TONG_CHU» (tiền bằng chữ) «NGAY_KD» (ngày kiểm đếm)… — danh sách đủ hiện trong hộp *Tạo văn bản*.
 - Dùng: nút **📄 Văn bản** trên dòng hộ (1 file Word), hoặc **📄 Tạo văn bản (theo mẫu)** trên đầu trang = mọi hộ đang lọc → file zip. Văn bản tải về máy, không gắn vào hộ.
 
+## QR hồ sơ & chụp ảnh hiện trạng bằng điện thoại
+- **🏷 In nhãn QR**: in nhãn dán bìa hồ sơ cho các hộ đang lọc (hoặc nút 🏷 QR trên 1 hộ) — QR, mã hồ sơ, họ tên, địa chỉ, tờ/thửa.
+- **⌗ Quét QR hồ sơ**: mở camera điện thoại quét nhãn → trang lọc ngay hộ đó. Không mở được camera thì *Chọn ảnh có QR*. Quét bằng camera điện thoại thường (Zalo, Camera) cũng mở thẳng trang đúng hộ.
+- **📷 Chụp ảnh HT** trên dòng hộ: chụp/chọn nhiều ảnh → trang đóng dấu giờ chụp, tọa độ GPS, tên hộ, tờ/thửa lên ảnh, gộp thành 1 PDF hồ sơ hiện trạng. Hộ đã có hồ sơ thì hỏi thêm vào cuối hay thay mới. Cho phép trình duyệt dùng vị trí để có GPS.
+
 ## Cập nhật Code.gs khi có bản mới
 Dán đè Code.gs → Triển khai → Quản lý triển khai → ✎ → Phiên bản: *Phiên bản mới* → Triển khai (URL /exec giữ nguyên).
 
