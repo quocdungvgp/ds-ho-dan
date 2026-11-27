@@ -1,3 +1,7 @@
 ds-ho-dan.zip
 *.pyc
+__pycache__/
 bando.json
+tests/node_modules/
+tests/fx/
+tests/package-lock.json

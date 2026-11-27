@@ -59,6 +59,9 @@ function caiDat() {
   Logger.log('Xong. Đăng nhập: admin / ' + MK_ADMIN_DAU + ' — đổi mật khẩu ngay sau lần đầu.');
 }
 
+/* sửa tay trên Sheet → báo các máy đang mở trang tự đọc lại (trigger đơn giản, không cần cài) */
+function onEdit() { CacheService.getScriptCache().put('ver', String(Date.now()), 21600); }
+
 function doGet() { return out_({ ok: true, msg: 'Máy chủ danh sách hộ đang chạy. Trang dùng POST.' }); }
 
 function doPost(e) {

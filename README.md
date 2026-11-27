@@ -1,6 +1,6 @@
 # Danh sách hộ dân · Bản đồ dự án — hướng dẫn dùng cho một dự án mới
 
-**Trang web:** https://quocdungvgp.github.io/ds-ho-dan/
+**Trang web:** https://quocdungvgp.github.io/ds-ho-dan/ · Làm tiếp code: đọc [PHAT-TRIEN.md](PHAT-TRIEN.md)
 
 ## Các file
 | File | Dùng để |

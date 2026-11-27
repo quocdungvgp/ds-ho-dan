@@ -454,7 +454,7 @@ async function delTB(r,quiet){
 const tbName=r=>'TBTHD_STT'+String(r.stt||'').padStart(3,'0')+'_'+fold(r.ten).replace(/[^a-z0-9]+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase())+'.docx';
 
 /* ================================================================
-   4. DỮ LIỆU MẪU (khi chưa nối Sheet, chưa nhập Excel)
+   4b. DỮ LIỆU MẪU (khi chưa nối Sheet, chưa nhập Excel)
    ================================================================ */
 function sample(){
   const ho=["Nguyễn Văn An","Trần Thị Bích","Lê Hoàng Phúc","Phạm Minh Tâm","Võ Thị Lan","Huỳnh Văn Sang","Đặng Thị Mai","Bùi Quốc Huy","Ngô Thanh Tùng","Đỗ Thị Hạnh","Trương Văn Lộc","Lý Kim Ngọc","Mai Văn Hòa","Phan Thị Thu","Châu Minh Đức","Hồ Văn Tài","Dương Thị Yến","Tạ Quang Vinh","Lâm Thị Kiều","Cao Văn Nam","Vương Thị Hoa","Kiều Văn Bình","Quách Thị Diệu","Công ty TNHH Minh Phát"];
