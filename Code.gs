@@ -40,7 +40,14 @@ const COT = [
   ['duyet', 'Chờ duyệt'], ['ghichu', 'Ghi chú'], ['by', 'Người sửa cuối'], ['at', 'Lúc sửa cuối'], ['id', 'id']
 ];
 const DATA_KEYS = COT.map(c => c[0]).filter(k => ['id', 'by', 'at', 'tb_file', 'tb_ten', 'ht_file', 'ht_ten'].indexOf(k) < 0);
-const U_COT = ['Tên đăng nhập', 'Họ tên', 'Quyền', 'Phạm vi tổ', 'Mật khẩu (mã hóa)', 'Muối', 'Khóa', 'Đăng nhập lần cuối'];
+const U_COT = ['Tên đăng nhập', 'Họ tên', 'Quyền', 'Phạm vi tổ', 'Mật khẩu (mã hóa)', 'Muối', 'Khóa', 'Đăng nhập lần cuối', 'Được sửa (nhóm)'];
+/* NHÓM DỮ LIỆU: người dùng chỉ sửa/đề nghị được các nhóm ghi ở cột "Được sửa (nhóm)" (trống hoặc * = mọi nhóm; quản trị luôn mọi nhóm).
+   Trường không thuộc nhóm nào dưới đây là nhóm "hoso". Thêm/xóa hộ, cấp mã cần nhóm hoso; nhập Excel nhiều hộ cần mọi nhóm. */
+const NHOM = { hoso: 'Thông tin hộ', tb: 'Thông báo thu hồi', ht: 'Ảnh hiện trạng', tien: 'Kinh phí, chi trả', gd: 'Tiến độ GPMB' };
+const NHOM_COT = { tb: ['tb_so', 'tb_ngay', 'tb_file', 'tb_ten'], ht: ['anh', 'ht', 'ht_file', 'ht_ten'], tien: ['tien_bt', 'tien_ht', 'tien_tdc', 'da_chi'], gd: ['gd', 'gd_ngay'] };
+function nhomOf_(k) { for (const g in NHOM_COT) if (NHOM_COT[g].indexOf(k) >= 0) return g; return 'hoso'; }
+function canNhom_(me, g) { if (me.q === 'quantri' || !me.nhom || me.nhom === '*') return true; return me.nhom.split(/[,;]/).map(x => x.trim()).indexOf(g) >= 0; }
+function nhom_(me, g) { if (!canNhom_(me, g)) throw new Error('Tài khoản ' + me.ten + ' không được sửa nhóm “' + (NHOM[g] || g) + '”'); }
 const DN_COT = ['id', 'Loại', 'Hộ id', 'Nội dung', 'Người đề nghị', 'Lúc', 'Trạng thái', 'Người duyệt', 'Lúc duyệt', 'Lý do'];
 const NK_COT = ['Lúc', 'Người', 'Việc', 'Hộ id', 'Chi tiết'];
 const QUYEN = ['quantri', 'sua', 'denghi', 'xem'];
@@ -56,7 +63,7 @@ function caiDat() {
   const c = cols_(sh), n = sh.getLastRow() - 1;
   if (n > 0) { const r = sh.getRange(2, c.id + 1, n, 1), v = r.getValues(); v.forEach(x => { if (!x[0]) x[0] = uid_(); }); r.setValues(v); }
   [['NguoiDung', U_COT], ['DeNghi', DN_COT], ['NhatKy', NK_COT]].forEach(([t, h]) => {
-    const s = tab_(t); if (!s.getLastRow()) { s.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold'); s.setFrozenRows(1); }
+    const s = tab_(t); if (!s.getLastRow() || s.getLastColumn() < h.length) { s.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold'); s.setFrozenRows(1); }
   });
   if (!users_().some(u => u.ten === 'admin')) {
     const salt = uid_();
@@ -95,14 +102,14 @@ function route_(me, q) {
     case 'list': { const rows = list_(); return { ok: true, rows, cho: pending_(me, rows), me: pub_(me), cfg: cfg_(), sheetUrl: me.q === 'quantri' ? SpreadsheetApp.getActive().getUrl() : '' }; }
     case 'ping': return { ok: true, v: CacheService.getScriptCache().get('ver') || '0' };
     case 'putCfg': need_(me, 'quantri'); PropertiesService.getScriptProperties().setProperty('cfg', JSON.stringify(q.cfg || {})); log_(me, 'sửa cấu hình dự án', '', JSON.stringify(q.cfg)); return { ok: true };
-    case 'capMa': need_(me, 'sua'); return { ok: true, n: capMa_(me, q.duoi) };
+    case 'capMa': need_(me, 'sua'); nhom_(me, 'hoso'); return { ok: true, n: capMa_(me, q.duoi) };
     case 'getFile': return { ok: true, b64: Utilities.base64Encode(DriveApp.getFileById(fileOk_(q.id)).getBlob().getBytes()) };
     case 'getMap': { const f = file_('bando.json'); return { ok: true, map: f ? JSON.parse(f.getBlob().getDataAsString()) : null }; }
     case 'getMau': { const f = file_('mau-thong-bao.docx'); return { ok: true, b64: f ? Utilities.base64Encode(f.getBlob().getBytes()) : '' }; }
     case 'log': need_(me, 'quantri'); return { ok: true, log: nhatKy_(q.hoId) };
     /* ---- thay đổi dữ liệu hộ ---- */
-    case 'upsert': return change_(me, q.row.id && rowIndex_(q.row.id) > 0 ? 'sua' : 'them', q.row);
-    case 'bulk': need_(me, 'sua'); (q.rows || []).forEach(r => { scope_(me, r.to); upsert_(r, me); }); log_(me, 'nhập nhiều', '', (q.rows || []).length + ' hộ'); return { ok: true };
+    case 'upsert': return change_(me, q.row.id && rowIndex_(q.row.id) > 0 ? 'sua' : 'them', q.row, q.goc, q.ep);
+    case 'bulk': need_(me, 'sua'); Object.keys(NHOM).forEach(g => nhom_(me, g)); (q.rows || []).forEach(r => { const cu = r.id ? getRow_(r.id) : null; if (cu) scope_(me, cu.to); scope_(me, r.to); upsert_(r, me); }); log_(me, 'nhập nhiều', '', (q.rows || []).length + ' hộ'); return { ok: true };
     case 'replaceAll': need_(me, 'quantri'); replaceAll_(q.rows || [], me); log_(me, 'thay toàn bộ danh sách', '', (q.rows || []).length + ' hộ'); return { ok: true };
     case 'delete': return change_(me, 'xoa', { id: q.id, lydo: q.lydo || '' });
     case 'uploadTB': return uploadTB_(me, q);
@@ -142,10 +149,10 @@ function users_() {
   const s = tab_('NguoiDung'); const n = s.getLastRow() - 1; if (n < 1) return [];
   return s.getRange(2, 1, n, U_COT.length).getValues().map((r, i) => ({
     row: i + 2, ten: String(r[0]).trim(), hoten: String(r[1]), q: String(r[2]).trim(), to: String(r[3] || '*').trim(),
-    hash: String(r[4]), salt: String(r[5]), khoa: !!String(r[6]).trim(), last: r[7]
+    hash: String(r[4]), salt: String(r[5]), khoa: !!String(r[6]).trim(), last: r[7], nhom: String(r[8] || '*').trim() || '*'
   })).filter(u => u.ten);
 }
-function pub_(u) { return { ten: u.ten, hoten: u.hoten, q: u.q, to: u.to, khoa: u.khoa, last: u.last ? String(u.last) : '' }; }
+function pub_(u) { return { ten: u.ten, hoten: u.hoten, q: u.q, to: u.to, nhom: u.nhom || '*', khoa: u.khoa, last: u.last ? String(u.last) : '' }; }
 function login_(ten, pass) {
   const cache = CacheService.getScriptCache(), k = 'sai_' + String(ten).toLowerCase(), sai = +(cache.get(k) || 0);
   if (sai >= 5) return { ok: false, error: 'Sai mật khẩu quá 5 lần — thử lại sau 15 phút' };
@@ -194,8 +201,9 @@ function userSave_(me, u) {
   const row = cu ? cu.row : s.getLastRow() + 1;
   s.getRange(row, 1, 1, 4).setValues([[ten, u.hoten || '', u.q, u.to || '*']]);
   s.getRange(row, 7).setValue(u.khoa ? 'x' : '');
+  const nh = String(u.nhom || '*').split(/[,;]/).map(x => x.trim()).filter(x => x === '*' || NHOM[x]); s.getRange(row, 9).setValue(!nh.length || nh.indexOf('*') >= 0 ? '*' : nh.join(', '));
   if (u.pass) { const salt = uid_(); s.getRange(row, 5, 1, 2).setValues([[hash_(u.pass, salt), salt]]); }
-  log_(me, cu ? 'sửa người dùng' : 'thêm người dùng', '', ten + ' · ' + u.q + ' · ' + (u.to || '*') + (u.pass ? ' · đặt mật khẩu' : '') + (u.khoa ? ' · KHÓA' : ''));
+  log_(me, cu ? 'sửa người dùng' : 'thêm người dùng', '', ten + ' · ' + u.q + ' · ' + (u.to || '*') + (u.pass ? ' · đặt mật khẩu' : '') + (u.khoa ? ' · KHÓA' : '') + ' · nhóm ' + (u.nhom || '*'));
   return { ok: true };
 }
 function userDel_(me, ten) {
@@ -258,16 +266,25 @@ function replaceAll_(rows, me) {
   sh.getRange(2, 1, rows.length, c._n).setValues(rows.map(r => { const l = new Array(c._n).fill(''); COT.forEach(([k]) => { if (c[k] !== undefined) l[c[k]] = r[k] === undefined ? '' : r[k]; }); return l; }));
 }
 /* sửa / thêm / xóa / gỡ TB: quyền "sua"+"quantri" có hiệu lực ngay, "denghi" thành đề nghị */
-function change_(me, loai, data) {
+function change_(me, loai, data, goc, ep) {
   need_(me, 'denghi');
+  if (loai === 'them' || loai === 'xoa') nhom_(me, 'hoso');
+  if (loai === 'go') nhom_(me, 'tb');
+  if (loai === 'goht') nhom_(me, 'ht');
   const cu = data.id ? getRow_(data.id) : null;
   if (loai === 'sua' || loai === 'xoa' || loai === 'go' || loai === 'goht') { if (!cu) throw new Error('Không thấy hộ'); scope_(me, cu.to); }
-  if (loai === 'them') scope_(me, data.to);
+  if (loai === 'them') { scope_(me, data.to); Object.keys(data).forEach(k => { if (DATA_KEYS.indexOf(k) >= 0 && String(data[k] || '') !== '' && !canNhom_(me, nhomOf_(k))) delete data[k]; }); }
   if (loai === 'sua' && data.to !== undefined) scope_(me, data.to);   // đổi sang tổ khác cũng phải trong phạm vi
   if (loai === 'sua') {   // chỉ giữ trường có thay đổi
     const d = { id: data.id }; let co = false;
     DATA_KEYS.forEach(k => { if (data[k] !== undefined && String(data[k]) !== String(cu[k])) { d[k] = data[k]; co = true; } });
     if (!co) return { ok: true, id: data.id, nochange: true };
+    /* CHỐNG GHI ĐÈ: trang gửi kèm goc = giá trị lúc mở form. Ô mình sửa mà người khác cũng vừa đổi (Sheet ≠ goc) → báo xung đột, không ghi. ep = người dùng chọn ghi đè. */
+    if (goc && !ep) {
+      const xd = Object.keys(d).filter(k => k !== 'id' && goc[k] !== undefined && String(cu[k]) !== String(goc[k]));
+      if (xd.length) return { ok: false, xungdot: xd.map(k => ({ k, goc: String(goc[k]), moi: String(cu[k]), minh: String(d[k]) })), by: cu.by, at: cu.at, error: 'Hộ vừa được ' + (cu.by || 'người khác') + ' sửa lúc ' + cu.at + ' — trùng ' + xd.length + ' ô' };
+    }
+    Object.keys(d).forEach(k => { if (k !== 'id') nhom_(me, nhomOf_(k)); });
     data = d;
   }
   if (me.q === 'denghi') {
@@ -301,7 +318,7 @@ function diffOnly_(d) { const o = {}; Object.keys(d).forEach(k => { if (DATA_KEY
 function uploadTB_(me, q) {
   need_(me, 'denghi');
   const cu = getRow_(q.id); if (!cu) throw new Error('Không thấy hộ'); scope_(me, cu.to);
-  const ht = q.kind === 'ht', loai = ht ? 'kemht' : 'kem';
+  const ht = q.kind === 'ht', loai = ht ? 'kemht' : 'kem'; nhom_(me, ht ? 'ht' : 'tb');
   const f = folder_().createFile(Utilities.newBlob(Utilities.base64Decode(q.b64), ht ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', q.name || (ht ? 'hien-trang.pdf' : 'thong-bao.docx')));
   const d = { fileId: f.getId(), name: q.name, anh: q.anh || '' };
   if (me.q === 'denghi') return { ok: true, pending: propose_(me, loai, q.id, d), fileId: f.getId() };

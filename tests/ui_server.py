@@ -6,11 +6,14 @@ from common import Run, FX, API, MANG, login, ok
 LINK = 'http://local/index.html?api=' + urllib.parse.quote(API)
 
 
-async def user(pg, ten, q, to):
+async def user(pg, ten, q, to, nhom=None):
     await pg.click('#bUsers'); await pg.wait_for_timeout(500)
     await pg.fill('#fUser [name=ten]', ten); await pg.fill('#fUser [name=hoten]', ten); await pg.select_option('#fUser [name=q]', q)
     await pg.fill('#fUser [name=pass]', '12345678')
     if to != '*': await pg.uncheck('#uTo [value="*"]'); await pg.check(f'#uTo [value="{to}"]')
+    if nhom:
+        await pg.uncheck('#uNhom [value="*"]')
+        for g in nhom: await pg.check(f'#uNhom [value="{g}"]')
     await pg.click('#uLuu'); await pg.wait_for_timeout(600); await pg.click('#uDong')
 
 
@@ -70,6 +73,34 @@ async def main():
         ok('Chi trả · 25/11/2026' in await xm.inner_text('#tMain tbody tr:nth-child(1)') and '31/03/2027' in await xm.inner_text('#gdHan'), 'tiến độ GPMB lưu Sheet, hạn bàn giao áp cho mọi người')
         urllib.request.urlopen('http://localhost:8787/__het'); await xm.click('#bReload'); await xm.wait_for_timeout(1000)
         ok(not await xm.evaluate("document.querySelector('#dLogin').open") and await xm.locator('#tMain tbody tr').count() >= 3, 'phiên đăng nhập sống qua mốc 6 giờ của Cache')
+        # 2 người cùng sửa 1 hộ: khác ô → giữ cả hai; trùng ô → hỏi, không ghi đè lặng lẽ
+        a2 = await R.page(LINK); await login(a2, 'admin', 'Doi-mat-khau-ngay-1')
+        async def sua(pg, k, v, gui=True):
+            await pg.click('#tMain tbody tr:nth-child(3) [data-a=sua]'); await pg.fill(f'#fm [name={k}]', v)
+            if gui: await pg.click('#fm button[value=ok]'); await pg.wait_for_timeout(1500)
+        await sua(ad, 'dt', '11,1', False); await sua(a2, 'ghichu', 'Ghi chú máy 2')
+        await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1500)
+        await ad.click('#bReload'); await ad.wait_for_timeout(1000); r3 = await ad.inner_text('#tMain tbody tr:nth-child(3)')
+        ok('11,1' in r3 and 'Ghi chú máy 2' in r3, 'cùng sửa 1 hộ, khác ô: giữ cả hai (không ghi đè)')
+        await sua(ad, 'dt', '22,2', False); await a2.click('#bReload'); await a2.wait_for_timeout(1000); await sua(a2, 'dt', '33,3')
+        await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1500)
+        hoi = await ad.inner_text('dialog[open]') if await ad.locator('dialog[open]').count() else ''
+        ok('Trùng 1 ô' in hoi and '33,3' in hoi, 'cùng sửa 1 ô: báo xung đột, nói rõ ai đổi thành gì')
+        await ad.click('dialog[open] button[value=no]'); await ad.wait_for_timeout(1500)
+        ok('33,3' in await ad.inner_text('#tMain tbody tr:nth-child(3)'), 'chọn không ghi đè → lấy bản mới nhất'); await a2.close()
+        # phân quyền theo nhóm dữ liệu: tien1 chỉ sửa Kinh phí
+        await user(ad, 'tien1', 'sua', '*', ['tien'])
+        tn = await R.page(LINK); await login(tn, 'tien1', '12345678')
+        await tn.click('#tMain tbody tr:nth-child(1) [data-a=sua]')
+        ok(await tn.locator('#fm [name=dt]').is_disabled() and not await tn.locator('#fm [name=tien_bt]').is_disabled() and await tn.locator('#tMain [data-a=xoa]').count() == 0 and await tn.locator('#tMain [data-a=kem]').count() == 0 and await tn.locator('#bAdd').is_hidden(),
+           'nhóm "Kinh phí": chỉ mở ô tiền, khóa ô khác, ẩn Xóa/Đính kèm/Thêm hộ')
+        await tn.fill('#fm [name=tien_bt]', '2.000.000.000'); await tn.click('#fm button[value=ok]'); await tn.wait_for_timeout(1500)
+        ok('PA 2 tỷ' in await tn.inner_text('#tMain tbody tr:nth-child(1)'), 'nhóm "Kinh phí": sửa tiền được')
+        j = await tn.evaluate("async(api)=>{const r=await fetch(api,{method:'POST',body:JSON.stringify({action:'upsert',token:localStorage.getItem('dsho_tk'),row:{id:document.querySelector('#tMain tbody tr [data-a=sua]').dataset.id,dt:'999'}})});return r.json()}", API)
+        j2 = await tn.evaluate("async(api)=>{const r=await fetch(api,{method:'POST',body:JSON.stringify({action:'delete',token:localStorage.getItem('dsho_tk'),id:document.querySelector('#tMain tbody tr [data-a=sua]').dataset.id})});return r.json()}", API)
+        j3 = await xm.evaluate("async(api)=>{const r=await fetch(api,{method:'POST',body:JSON.stringify({action:'upsert',token:localStorage.getItem('dsho_tk'),row:{id:document.querySelector('#tMain tbody tr [data-a=map]').dataset.id,dt:'999'}})});return r.json()}", API)
+        ok(not j['ok'] and 'Thông tin hộ' in j['error'] and not j2['ok'] and not j3['ok'], 'máy chủ chặn gọi thẳng API: nhóm Kinh phí sửa DT/xóa hộ, quyền Xem sửa — đều bị từ chối')
+        await tn.close()
         # mất sóng: sửa → cất hàng đợi, vẫn xem được; có mạng → tự gửi
         MANG['tat'] = True
         await ad.click('#tMain tbody tr:nth-child(1) [data-a=sua]'); await ad.fill('#fm [name=ghichu]', 'Sửa ngoài thực địa'); await ad.click('#fm button[value=ok]'); await ad.wait_for_timeout(1200)
