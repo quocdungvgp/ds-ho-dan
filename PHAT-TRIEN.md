@@ -117,8 +117,7 @@ Sửa → chạy tests → `git commit` → `git push` (GitHub Pages tự cập 
 10. **Gộp hình học thật** khi gộp thửa kề (turf.js `union`), hiện chỉ gộp theo nhãn.
 11. **Nhập bản vẽ khác DXF**: GeoJSON/KML (đã có VN2GE ra KML), DWG cần ODA File Converter chuyển DXF trước.
 12. **Đọc hồ sơ quét bằng AI** → điền thông tin hộ (nối skill nhận định nhà đất Metro 2 / máy AI offline của Ban).
-13. **Nối Base.vn** (số liệu hồ sơ trên Base như thẻ “Số liệu Base” của Ban) — cần token API Base.
-14. **Dùng ngoài thực địa khi mất sóng** (PWA: service worker + hàng đợi sửa, gửi khi có mạng).
+13. **Dùng ngoài thực địa khi mất sóng** (PWA: service worker + hàng đợi sửa, gửi khi có mạng).
 
 ### Kỹ thuật / giới hạn đã biết
 - `TB_FLD` (mục 7) cứng theo câu chữ mẫu TB thu hồi đất chuẩn → nên đưa vào cấu hình chung để mỗi dự án tự khai.
